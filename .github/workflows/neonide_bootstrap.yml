@@ -36,10 +36,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Free additional disk space (if needed)
-        run: |
-          set -euo pipefail
-          ./scripts/free-space.sh
 
       # Use the no-compile generator (downloads packages from repo) to avoid
       # running full package builds and running out of disk space.
