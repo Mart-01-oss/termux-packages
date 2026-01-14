@@ -6,16 +6,21 @@ set -euo pipefail
 #
 # This script will:
 # 1. Patch scripts/properties.sh -> TERMUX_APP__PACKAGE_NAME
-# 2. Run: ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --android10 --architectures aarch64 -f
+# 2. Run: ./scripts/run-docker.sh ./scripts/build-bootstraps.sh --android10 --architectures aarch64
+#    Optionally pass extra packages via --add (from a packages list file).
 # 3. Restore scripts/properties.sh (unless KEEP_CHANGES=1)
 
 APP_PACKAGE="com.neonide.studio"
 ARCH="aarch64"
 ANDROID10=1
-FORCE=1
+# IMPORTANT: default is NO force rebuild, so repeated runs do not rebuild everything.
+# Use --force to force a rebuild.
+FORCE=0
 KEEP_CHANGES="${KEEP_CHANGES:-0}"
 DRY_RUN=0
 SETUP_ANDROID_SDK=1
+PACKAGES_FILE_DEFAULT="scripts/neonide-bootstrap-packages.txt"
+PACKAGES_FILE=""
 # Optionally set TMPDIR for container-side temp files.
 # Some environments (especially CI) may have more free space in /tmp.
 TMPDIR_IN_CONTAINER="${TMPDIR_IN_CONTAINER:-}"
@@ -29,7 +34,10 @@ Options:
                         Default: ${APP_PACKAGE}
   --arch <arch>         Architecture to build. Default: ${ARCH}
   --no-android10        Build legacy (Android <10) bootstrap (disables --android10).
-  --no-force            Don't pass -f (force rebuild).
+  --force               Pass -f to scripts/build-bootstraps.sh (force rebuild).
+  --packages-file <path> Newline-separated list of extra packages to include.
+                        Default: ${PACKAGES_FILE_DEFAULT}
+                        (comments/empty lines are ignored)
   --dry-run             Patch properties.sh and print the docker command, but do not run it.
   --no-setup-android-sdk Skip automatic Android SDK/NDK setup inside docker.
   --tmpdir-in-container <path> Set TMPDIR inside docker container (e.g. /tmp)
@@ -53,8 +61,10 @@ while (($# > 0)); do
       ARCH="${2:?Missing value for --arch}"; shift 2;;
     --no-android10)
       ANDROID10=0; shift 1;;
-    --no-force)
-      FORCE=0; shift 1;;
+    --force)
+      FORCE=1; shift 1;;
+    --packages-file)
+      PACKAGES_FILE="${2:?Missing value for --packages-file}"; shift 2;;
     --dry-run)
       DRY_RUN=1; shift 1;;
     --no-setup-android-sdk)
@@ -104,9 +114,32 @@ fi
 echo "[*] Building bootstrap for app package: $APP_PACKAGE"
 echo "[*] Architecture: $ARCH"
 
+# If a packages file was provided (or exists at default path), pass it as --add.
+# Note: scripts/build-bootstraps.sh will still build the minimal/core set;
+# this only controls the additional packages.
+PACKAGES_CSV=""
+if [[ -z "$PACKAGES_FILE" && -f "$PACKAGES_FILE_DEFAULT" ]]; then
+  PACKAGES_FILE="$PACKAGES_FILE_DEFAULT"
+fi
+if [[ -n "$PACKAGES_FILE" ]]; then
+  if [[ ! -f "$PACKAGES_FILE" ]]; then
+    echo "ERROR: packages file not found: $PACKAGES_FILE" >&2
+    exit 1
+  fi
+  PACKAGES_CSV="$(grep -vE '^[[:space:]]*(#|$)' "$PACKAGES_FILE" | tr '\n' ',' | sed 's/,$//')"
+  if [[ -z "$PACKAGES_CSV" ]]; then
+    echo "ERROR: package list is empty (after filtering comments): $PACKAGES_FILE" >&2
+    exit 1
+  fi
+  echo "[*] Additional packages loaded from: $PACKAGES_FILE"
+fi
+
 args=("./scripts/build-bootstraps.sh" "--architectures" "$ARCH")
 if [[ "$ANDROID10" == "1" ]]; then
   args+=("--android10")
+fi
+if [[ -n "$PACKAGES_CSV" ]]; then
+  args+=("--add" "$PACKAGES_CSV")
 fi
 if [[ "$FORCE" == "1" ]]; then
   args+=("-f")

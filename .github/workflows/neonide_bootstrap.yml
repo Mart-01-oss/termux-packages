@@ -16,10 +16,10 @@ on:
         required: false
         type: boolean
         default: true
-      repo_url:
-        description: "APT repository base URL (must contain requested packages)"
+      packages_file:
+        description: "Newline-separated package list file to pass to the bootstrap builder"
         required: false
-        default: "https://packages-cf.termux.dev/apt/termux-main"
+        default: "scripts/neonide-bootstrap-packages.txt"
 
 permissions: {}
 
@@ -37,8 +37,6 @@ jobs:
         uses: actions/checkout@v5
 
 
-      # Use the no-compile generator (downloads packages from repo) to avoid
-      # running full package builds and running out of disk space.
       - name: Build bootstrap zip
         run: |
           set -euo pipefail
@@ -46,14 +44,14 @@ jobs:
           args=(
             --app-package "${{ inputs.app_package }}"
             --arch "${{ inputs.arch }}"
-            --repo "${{ inputs.repo_url }}"
+            --packages-file "${{ inputs.packages_file }}"
           )
 
           if [ "${{ inputs.android10 }}" != "true" ]; then
             args+=(--no-android10)
           fi
 
-          ./build-neonide-bootstrap-from-repo.sh "${args[@]}"
+          ./build-neonide-bootstrap.sh "${args[@]}"
 
       - name: List produced zips
         run: |
