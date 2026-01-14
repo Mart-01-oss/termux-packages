@@ -397,7 +397,16 @@ main() {
 		termux_step_handle_buildarch
 
 		if [[ $FORCE_BUILD_PACKAGES == "1" ]]; then
-			rm -f "$TERMUX_BUILT_PACKAGES_DIRECTORY_FOR_ARCH"/*
+			# NOTE: Do NOT use TERMUX_BUILT_PACKAGES_DIRECTORY_FOR_ARCH here.
+			# It is not set by this script and would expand to an empty string,
+			# causing a potentially destructive `rm -f /*`.
+			if [[ -z "${TERMUX_BUILT_PACKAGES_DIRECTORY:-}" || "$TERMUX_BUILT_PACKAGES_DIRECTORY" == "/" ]]; then
+				echo "[!] Refusing to clean invalid TERMUX_BUILT_PACKAGES_DIRECTORY: '${TERMUX_BUILT_PACKAGES_DIRECTORY-}'" 1>&2
+				return 1
+			fi
+			if [[ -d "$TERMUX_BUILT_PACKAGES_DIRECTORY" ]]; then
+				rm -f "$TERMUX_BUILT_PACKAGES_DIRECTORY"/*
+			fi
 			rm -f "$TERMUX_BUILT_DEBS_DIRECTORY"/*
 		fi
 
