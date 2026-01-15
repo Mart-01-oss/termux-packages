@@ -506,6 +506,9 @@ _show_usage() {
 	echo "     flags alone would not remove, like cache dir containing "
 	echo "     package sources and host build dir. Ignored if '-f/-F'"
 	echo "     flags are not passed."
+	echo "  --cleanup-workdir Remove per-package work directory under TERMUX_TOPDIR"
+	echo "     (e.g. \$HOME/.termux-build/<pkg>) after a successful build."
+	echo "     Useful for CI/bootstrap generation to save disk space."
 	echo "  -w Install dependencies without version binding."
 	echo "  -s Skip dependency check."
 	echo "  -o Specify directory where to put built packages. Default: output/."
@@ -577,6 +580,7 @@ while (($# >= 1)); do
 		-q) export TERMUX_QUIET_BUILD=true;;
 		-Q) set -x;;
 		-r) export TERMUX_PKGS__BUILD__RM_ALL_PKG_BUILD_DEPENDENT_DIRS=true;;
+		--cleanup-workdir) export TERMUX_PKGS__BUILD__CLEANUP_WORKDIR=true;;
 		-w) export TERMUX_WITHOUT_DEPVERSION_BINDING=true;;
 		-s) export TERMUX_SKIP_DEPCHECK=true;;
 		-o)
@@ -779,6 +783,23 @@ for ((i=0; i<${#PACKAGE_LIST[@]}; i++)); do
 			sed -i "\|^${TERMUX_PKG_BUILDER_DIR#${TERMUX_SCRIPTDIR}/}$|d" "$TERMUX_BUILD_PACKAGE_CALL_BUILDING_PACKAGES_LIST_FILE_PATH"
 		fi
 		termux_add_package_to_built_packages_list "$TERMUX_PKG_NAME"
+
+		# Optional: cleanup per-package work directory under TERMUX_TOPDIR after successful build.
+		# This is useful for CI/bootstrap builds where sources are cloned/build artifacts are not needed.
+		if [[ "${TERMUX_PKGS__BUILD__CLEANUP_WORKDIR:-false}" == "true" ]]; then
+			if [[ -n "${TERMUX_TOPDIR:-}" && -n "${TERMUX_PKG_NAME:-}" ]]; then
+				WORKDIR_TO_CLEAN="${TERMUX_TOPDIR%/}/${TERMUX_PKG_NAME}"
+				# Basic safety checks.
+				if [[ "$WORKDIR_TO_CLEAN" == "/" || "$WORKDIR_TO_CLEAN" == "" ]]; then
+					termux_error_exit "Refusing to cleanup invalid workdir path '$WORKDIR_TO_CLEAN'"
+				fi
+				if [[ -d "$WORKDIR_TO_CLEAN" ]]; then
+					echo "INFO: --cleanup-workdir: removing '$WORKDIR_TO_CLEAN'"
+					rm -rf "$WORKDIR_TO_CLEAN"
+				fi
+			fi
+		fi
+
 		termux_step_finish_build
 	) 5< "$TERMUX_BUILD_LOCK_FILE"
 done

@@ -47,7 +47,18 @@ declare -a ADDITIONAL_PACKAGES=()
 declare -a EXTRACTED_PACKAGES=()
 
 # A list of options to pass to build-package.sh
-declare -a BUILD_PACKAGE_OPTIONS=()
+# -r: remove cached sources/hostbuild dirs when TERMUX_FORCE_BUILD=true.
+# We additionally pass --cleanup-workdir per build to remove $TERMUX_TOPDIR/$TERMUX_PKG_NAME after successful build.
+#
+# Bootstrap builds for forked app IDs must rebuild packages so that paths embed the correct TERMUX_APP_PACKAGE.
+# Default to forcing rebuilds for bootstrap generation, but allow opting out.
+: "${TERMUX_BOOTSTRAP_FORCE_REBUILD:=true}"
+
+declare -a BUILD_PACKAGE_OPTIONS=("-r")
+if [[ "$TERMUX_BOOTSTRAP_FORCE_REBUILD" == "true" ]]; then
+	BUILD_PACKAGE_OPTIONS+=("-f")
+	FORCE_BUILD_PACKAGES=1
+fi
 
 # Check for some important utilities that may not be available for
 # some reason.
@@ -73,7 +84,7 @@ build_package() {
 	cd "$TERMUX_PACKAGES_DIRECTORY"
 	echo $'\n\n\n'"[*] Building '$package_name'..."
 	exec 99>&1
-	build_output="$("$TERMUX_PACKAGES_DIRECTORY"/build-package.sh "${BUILD_PACKAGE_OPTIONS[@]}" -a "$TERMUX_ARCH" "$package_name" 2>&1 | tee >(cat - >&99); exit ${PIPESTATUS[0]})";
+	build_output="$("$TERMUX_PACKAGES_DIRECTORY"/build-package.sh "${BUILD_PACKAGE_OPTIONS[@]}" --cleanup-workdir -a "$TERMUX_ARCH" "$package_name" 2>&1 | tee >(cat - >&99); exit ${PIPESTATUS[0]})";
 	return_value=$?
 	echo "[*] Building '$package_name' exited with exit code $return_value"
 	exec 99>&-
@@ -311,6 +322,10 @@ The package name/prefix that the bootstrap is built for is defined by
 TERMUX_APP_PACKAGE in 'scrips/properties.sh'. It defaults to 'com.termux'.
 If package name is changed, make sure to run
 `./scripts/run-docker.sh ./clean.sh` or pass '-f' to force rebuild of packages.
+
+Note: For bootstrap builds, this script defaults to forcing rebuilds (equivalent to '-f')
+so the correct TERMUX_APP_PACKAGE specific paths are used. Set TERMUX_BOOTSTRAP_FORCE_REBUILD=false
+to restore the old behavior.
 
 ### Examples
 

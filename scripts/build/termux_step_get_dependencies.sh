@@ -105,6 +105,7 @@ termux_run_build-package() {
 		$([[ "${TERMUX_INSTALL_DEPS}" == "true" ]] && echo "-I" || echo "-s") \
 		$([[ "${TERMUX_FORCE_BUILD}" == "true" && "${TERMUX_FORCE_BUILD_DEPENDENCIES}" == "true" ]] && echo "-F") \
 		$([[ "${TERMUX_PKGS__BUILD__RM_ALL_PKG_BUILD_DEPENDENT_DIRS}" == "true" ]] && echo "-r") \
+		$([[ "${TERMUX_PKGS__BUILD__CLEANUP_WORKDIR:-false}" == "true" ]] && echo "--cleanup-workdir") \
 		$([[ "${TERMUX_WITHOUT_DEPVERSION_BINDING}" = "true" ]] && echo "-w") \
 			--format $TERMUX_PACKAGE_FORMAT --library $set_library "${PKG_DIR}"
 }
