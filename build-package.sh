@@ -789,9 +789,12 @@ for ((i=0; i<${#PACKAGE_LIST[@]}; i++)); do
 		if [[ "${TERMUX_PKGS__BUILD__CLEANUP_WORKDIR:-false}" == "true" ]]; then
 			if [[ -n "${TERMUX_TOPDIR:-}" && -n "${TERMUX_PKG_NAME:-}" ]]; then
 				WORKDIR_TO_CLEAN="${TERMUX_TOPDIR%/}/${TERMUX_PKG_NAME}"
-				# Basic safety checks.
-				if [[ "$WORKDIR_TO_CLEAN" == "/" || "$WORKDIR_TO_CLEAN" == "" ]]; then
+				# Safety checks.
+				if [[ -z "$WORKDIR_TO_CLEAN" || "$WORKDIR_TO_CLEAN" == "/" ]]; then
 					termux_error_exit "Refusing to cleanup invalid workdir path '$WORKDIR_TO_CLEAN'"
+				fi
+				if [[ "$WORKDIR_TO_CLEAN" != "${TERMUX_TOPDIR%/}/"* ]]; then
+					termux_error_exit "Refusing to cleanup workdir not under TERMUX_TOPDIR: '$WORKDIR_TO_CLEAN'"
 				fi
 				if [[ -d "$WORKDIR_TO_CLEAN" ]]; then
 					echo "INFO: --cleanup-workdir: removing '$WORKDIR_TO_CLEAN'"

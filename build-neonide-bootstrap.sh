@@ -13,8 +13,9 @@ set -euo pipefail
 APP_PACKAGE="com.neonide.studio"
 ARCH="aarch64"
 ANDROID10=1
-# IMPORTANT: default is NO force rebuild, so repeated runs do not rebuild everything.
-# Use --force to force a rebuild.
+# IMPORTANT: scripts/build-bootstraps.sh now defaults to forcing rebuilds for bootstrap
+# generation (TERMUX_BOOTSTRAP_FORCE_REBUILD=true). Use TERMUX_BOOTSTRAP_FORCE_REBUILD=false
+# to restore the old behavior. This flag (--force) still explicitly passes -f.
 FORCE=0
 KEEP_CHANGES="${KEEP_CHANGES:-0}"
 DRY_RUN=0
@@ -37,6 +38,7 @@ Options:
   --arch <arch>         Architecture to build. Default: ${ARCH}
   --no-android10        Build legacy (Android <10) bootstrap (disables --android10).
   --force               Pass -f to scripts/build-bootstraps.sh (force rebuild).
+                        (usually not needed since TERMUX_BOOTSTRAP_FORCE_REBUILD defaults to true)
   --packages-file <path> Newline-separated list of extra packages to include.
                         (comments/empty lines are ignored)
                         If not provided, builds ONLY the core bootstrap package set.
@@ -46,7 +48,10 @@ Options:
   -h, --help            Show this help.
 
 Environment:
-  KEEP_CHANGES=1        Don't restore scripts/properties.sh after build.
+  KEEP_CHANGES=1                  Don't restore scripts/properties.sh after build.
+  TERMUX_BOOTSTRAP_FORCE_REBUILD=false
+                                 Don't force rebuilds inside scripts/build-bootstraps.sh.
+                                 (Not recommended when changing app package name)
 
 Examples:
   $0
