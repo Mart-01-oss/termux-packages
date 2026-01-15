@@ -239,6 +239,14 @@ jobs:
         sudo apt install ninja-build
         ./scripts/free-space.sh
 
+    - name: Ensure Android SDK/NDK available in docker
+      if: ${{ steps.build-info.outputs.docker-build == 'true' && steps.build-info.outputs.skip-building != 'true' }}
+      run: |
+        set -euo pipefail
+        # The docker image normally includes the SDK/NDK, but they may be missing
+        # (or the container may be new). Ensure they exist before starting builds.
+        ./scripts/run-docker.sh bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi'
+
     - name: Build packages
       if: ${{ steps.build-info.outputs.skip-building != 'true' }}
       env:
