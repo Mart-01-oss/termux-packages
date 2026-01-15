@@ -58,6 +58,18 @@ jobs:
           set -euo pipefail
           df -h
 
+      # Docker image pulls can fill /var/lib/docker (root partition). Move docker storage to /mnt (larger partition on GH runners).
+      - name: Move Docker data-root to /mnt
+        run: |
+          set -euo pipefail
+          sudo systemctl stop docker
+          sudo mkdir -p /mnt/docker
+          sudo rsync -aHAX --delete /var/lib/docker/ /mnt/docker/ || true
+          echo '{"data-root": "/mnt/docker"}' | sudo tee /etc/docker/daemon.json
+          sudo systemctl start docker
+          docker info | sed -n '1,120p'
+          df -h
+
       - name: Checkout
         uses: actions/checkout@v5
 
