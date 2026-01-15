@@ -1,0 +1,11 @@
+--- a/libunbound/python/libunbound.i
++++ b/libunbound/python/libunbound.i
+@@ -853,7 +853,7 @@
+ %{ 
+   //printf("resolve_start(%lX)\n",(long unsigned int)arg1);
+   Py_BEGIN_ALLOW_THREADS 
+-  $function 
++  $action 
+   Py_END_ALLOW_THREADS 
+   //printf("resolve_stop()\n");
+ %} 

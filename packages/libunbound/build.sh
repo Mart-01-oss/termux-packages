@@ -3,6 +3,7 @@ TERMUX_PKG_DESCRIPTION="A validating, recursive, caching DNS resolver"
 TERMUX_PKG_LICENSE="BSD 3-Clause"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION="1.24.0"
+TERMUX_PKG_REVISION=1
 TERMUX_PKG_SRCURL=https://nlnetlabs.nl/downloads/unbound/unbound-${TERMUX_PKG_VERSION}.tar.gz
 TERMUX_PKG_SHA256=147b22983cc7008aa21007e251b3845bfcf899ffd2d3b269253ebf2e27465086
 TERMUX_PKG_AUTO_UPDATE=true
@@ -34,6 +35,14 @@ ac_cv_func_getpwnam=no
 --with-pidfile=$TERMUX_PREFIX/var/run/unbound.pid
 --with-username=
 "
+
+termux_step_post_make_install() {
+	# Upstream installs this helper script sometimes without the executable bit.
+	# Ensure it is runnable in the final package.
+	if [ -f "$TERMUX_PREFIX/bin/unbound-control-setup" ]; then
+		chmod 0755 "$TERMUX_PREFIX/bin/unbound-control-setup"
+	fi
+}
 
 termux_step_post_massage() {
 	mkdir -p "$TERMUX_PKG_MASSAGEDIR/$TERMUX_PREFIX/var/run"
