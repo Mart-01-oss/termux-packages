@@ -72,6 +72,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Prepare build log
+        run: |
+          set -euo pipefail
+          mkdir -p logs
+          LOG_PATH="logs/neonide-bootstrap-${{ inputs.arch }}-${{ github.run_id }}.log"
+          : > "$LOG_PATH"
+          echo "BOOTSTRAP_LOG=$LOG_PATH" >> "$GITHUB_ENV"
+          echo "Bootstrap build log: $LOG_PATH"
+
       - name: Build bootstrap zip
         run: |
           set -euo pipefail
@@ -89,7 +98,20 @@ jobs:
             args+=(--no-android10)
           fi
 
-          ./build-neonide-bootstrap.sh "${args[@]}"
+          cmd=(./build-neonide-bootstrap.sh "${args[@]}")
+          cmd_str="$(printf '%q ' "${cmd[@]}")"
+
+          # Use a pseudo-TTY to reduce stdout buffering and write a full log to an artifact.
+          # GitHub Actions UI truncates logs (~50k lines), but the artifact will contain everything.
+          script -q -e -f -c "$cmd_str" "$BOOTSTRAP_LOG"
+
+      - name: Upload build log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neonide-bootstrap-log-${{ inputs.arch }}-${{ github.run_id }}
+          path: logs/neonide-bootstrap-${{ inputs.arch }}-${{ github.run_id }}.log
+          if-no-files-found: warn
 
       - name: List produced zips
         run: |
