@@ -12,14 +12,19 @@ set -euo pipefail
 # - gzip, sha256sum
 #
 # Environment variables:
-#   PAGES_REPO_DIR            Path to checked-out pages repo (required)
-#   PACKAGES_INDEX_PATH       Path to Packages file to drive the build list
-#                             (default: $PAGES_REPO_DIR/dists/stable/main/binary-aarch64/Packages)
-#   EXCLUDE_BOOTSTRAP_LIST    Space/newline-separated package names to exclude (bootstrap/core)
-#                             (default: scripts/neonide-bootstrap-packages.txt)
-#   BATCH_SIZE                Max number of *source packages* to build per run (default: 25)
-#   FORCE_REBUILD             If 'true', ignore skip checks and rebuild (default: false)
-#   TERMUX_ARCH               Target arch (default: aarch64)
+#   PAGES_REPO_DIR                 Path to checked-out pages repo (required)
+#   DESIRED_PACKAGES_SOURCE        Where to get the desired build list from:
+#                                  - recipes (default): all directories under ./packages/
+#                                  - file: read from DESIRED_PACKAGES_FILE (newline/space separated)
+#                                  - pages_packages: parse from the pages Packages index (not recommended)
+#   DESIRED_PACKAGES_FILE          Used when DESIRED_PACKAGES_SOURCE=file
+#   PAGES_PACKAGES_INDEX_PATH      Pages Packages index used as current published state for skip checks
+#                                  (default: $PAGES_REPO_DIR/dists/stable/main/binary-aarch64/Packages)
+#   EXCLUDE_BOOTSTRAP_LIST         Space/newline-separated package names to exclude (bootstrap/core)
+#                                  (default: scripts/neonide-bootstrap-packages.txt)
+#   BATCH_SIZE                     Max number of *source packages* to build per run (default: 25)
+#   FORCE_REBUILD                  If 'true', ignore skip checks and rebuild (default: false)
+#   TERMUX_ARCH                    Target arch (default: aarch64)
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -29,14 +34,18 @@ cd "$REPO_ROOT"
 : "${BATCH_SIZE:=25}"
 : "${FORCE_REBUILD:=false}"
 
-PACKAGES_INDEX_PATH_DEFAULT="$PAGES_REPO_DIR/dists/stable/main/binary-aarch64/Packages"
-: "${PACKAGES_INDEX_PATH:=$PACKAGES_INDEX_PATH_DEFAULT}"
+: "${DESIRED_PACKAGES_SOURCE:=recipes}"
+: "${DESIRED_PACKAGES_FILE:=}"
+
+PAGES_PACKAGES_INDEX_PATH_DEFAULT="$PAGES_REPO_DIR/dists/stable/main/binary-aarch64/Packages"
+: "${PAGES_PACKAGES_INDEX_PATH:=$PAGES_PACKAGES_INDEX_PATH_DEFAULT}"
 
 : "${EXCLUDE_BOOTSTRAP_LIST:=$REPO_ROOT/scripts/neonide-bootstrap-packages.txt}"
 
-if [[ ! -f "$PACKAGES_INDEX_PATH" ]]; then
-  echo "ERROR: Packages index not found: $PACKAGES_INDEX_PATH" >&2
-  exit 1
+# The pages Packages index is used only for skip checks. If it doesn't exist yet
+# (fresh pages repo), treat it as empty and build packages.
+if [[ ! -f "$PAGES_PACKAGES_INDEX_PATH" ]]; then
+  echo "[*] Pages Packages index not found yet: $PAGES_PACKAGES_INDEX_PATH (will treat as empty)"
 fi
 
 if [[ ! -d "$PAGES_REPO_DIR/.git" ]]; then
@@ -60,14 +69,39 @@ fi
 # Use a field split that works with:
 #   Filename: pool/main/libp/libpng/libpng_...
 # by splitting on spaces, ':' and '/'.
+# Desired build list
 mapfile -t ALL_SRCPKGS < <(
-  awk -F'[:/ ]+' '$1=="Filename" {print $5}' "$PACKAGES_INDEX_PATH" | sort -u
+  case "$DESIRED_PACKAGES_SOURCE" in
+    recipes)
+      find "$REPO_ROOT/packages" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -u
+      ;;
+    file)
+      if [[ -z "$DESIRED_PACKAGES_FILE" || ! -f "$DESIRED_PACKAGES_FILE" ]]; then
+        echo "ERROR: DESIRED_PACKAGES_SOURCE=file but DESIRED_PACKAGES_FILE is missing or not a file: '$DESIRED_PACKAGES_FILE'" >&2
+        exit 1
+      fi
+      tr ' \t\r\n' '\n' < "$DESIRED_PACKAGES_FILE" | sed '/^$/d' | sort -u
+      ;;
+    pages_packages)
+      if [[ ! -f "$PAGES_PACKAGES_INDEX_PATH" ]]; then
+        echo "ERROR: DESIRED_PACKAGES_SOURCE=pages_packages but pages Packages index not found: $PAGES_PACKAGES_INDEX_PATH" >&2
+        exit 1
+      fi
+      awk -F'[:/ ]+' '$1=="Filename" {print $5}' "$PAGES_PACKAGES_INDEX_PATH" | sort -u
+      ;;
+    *)
+      echo "ERROR: Unknown DESIRED_PACKAGES_SOURCE='$DESIRED_PACKAGES_SOURCE'" >&2
+      exit 1
+      ;;
+  esac
 )
 
 if [[ ${#ALL_SRCPKGS[@]} -eq 0 ]]; then
-  echo "ERROR: No packages found in $PACKAGES_INDEX_PATH" >&2
+  echo "ERROR: Desired package list is empty (source=$DESIRED_PACKAGES_SOURCE)" >&2
   exit 1
 fi
+
+echo "[*] Desired packages (source=$DESIRED_PACKAGES_SOURCE): ${#ALL_SRCPKGS[@]}"
 
 # Returns 0 (true) if for given srcpkg, all referenced .deb files exist and match SHA256 in Packages.
 # If the srcpkg has no entries in Packages yet, returns 1.
@@ -75,6 +109,12 @@ all_files_exist_and_match() {
   local srcpkg="$1"
 
   local entries
+
+  # If we don't have a state Packages index yet, nothing is built.
+  if [[ ! -f "$PAGES_PACKAGES_INDEX_PATH" ]]; then
+    return 1
+  fi
+
   entries="$(awk -v pkg="$srcpkg" 'BEGIN{RS="";FS="\n"}
     {
       fn=""; sha="";
@@ -86,7 +126,7 @@ all_files_exist_and_match() {
       n=split(fn,a,"/");
       # pool/main/<group>/<srcpkg>/<deb>
       if(n>=5 && a[4]==pkg){print fn"\t"sha}
-    }' "$PACKAGES_INDEX_PATH")"
+    }' "$PAGES_PACKAGES_INDEX_PATH")"
 
   if [[ -z "$entries" ]]; then
     return 1

@@ -103,6 +103,8 @@ jobs:
           FORCE_REBUILD: ${{ inputs.force_rebuild && 'true' || 'false' }}
           # Exclude "termux core" (bootstrap) packages list
           EXCLUDE_BOOTSTRAP_LIST: ${{ github.workspace }}/scripts/neonide-bootstrap-packages.txt
+          # Desired list: build all package recipes (incremental batches)
+          DESIRED_PACKAGES_SOURCE: recipes
           # Optional signing
           NEONIDE_GPG_KEY_ID: ${{ secrets.NEONIDE_GPG_KEY_ID }}
         run: |
