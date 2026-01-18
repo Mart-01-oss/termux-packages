@@ -1,0 +1,3 @@
+[submodule "site/pages"]
+	path = site/pages
+	url = https://github.com/Mart-01-oss/pages.git
