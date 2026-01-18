@@ -160,6 +160,23 @@ pool_group_for_pkg() {
   fi
 }
 
+# Detect a working host LLVM base dir inside the docker builder image.
+# Many builds expect "$TERMUX_HOST_LLVM_BASE_DIR/bin/clang" to exist.
+# The builder image may have LLVM installed under /usr/lib/llvm-<ver>/.
+HOST_LLVM_BASE_DIR_IN_CONTAINER="${HOST_LLVM_BASE_DIR_IN_CONTAINER:-}"
+if [[ -z "$HOST_LLVM_BASE_DIR_IN_CONTAINER" ]]; then
+  # Try to discover the newest /usr/lib/llvm-*/bin/clang inside the container.
+  HOST_LLVM_BASE_DIR_IN_CONTAINER="$(./scripts/run-docker.sh bash -lc '
+    set -e
+    best=""
+    for d in /usr/lib/llvm-*; do
+      if [ -x "$d/bin/clang" ]; then best="$d"; fi
+    done
+    if [ -n "$best" ]; then echo "$best"; else echo "/usr"; fi
+  ' | tail -n 1)"
+  echo "[*] Using host LLVM base dir in container: $HOST_LLVM_BASE_DIR_IN_CONTAINER"
+fi
+
 # Build a termux recipe in docker and copy produced debs for that recipe into pages pool.
 build_and_publish_srcpkg() {
   local srcpkg="$1"
@@ -175,9 +192,8 @@ build_and_publish_srcpkg() {
   mkdir -p output
   rm -f output/*.deb || true
 
-  # The docker builder image may not contain the exact llvm major version configured in scripts/properties.sh.
-  # Avoid failures like: "BUILD_CC=/usr/lib/llvm-19/bin/clang does not exist" by forcing host LLVM base to /usr.
-  ./scripts/run-docker.sh env TERMUX_HOST_LLVM_BASE_DIR=/usr ./build-package.sh -a "$TERMUX_ARCH" "$srcpkg"
+  # Ensure TERMUX_HOST_LLVM_BASE_DIR points to a directory that has bin/clang inside the container.
+  ./scripts/run-docker.sh env TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" ./build-package.sh -a "$TERMUX_ARCH" "$srcpkg"
 
   # Determine which .debs belong to this recipe: main package + subpackages.
   declare -a names=("$srcpkg")
