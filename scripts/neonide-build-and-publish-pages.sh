@@ -201,6 +201,41 @@ echo "[*] Regenerating Packages and Packages.gz from pool..."
   gzip -9 -c dists/stable/main/binary-aarch64/Packages > dists/stable/main/binary-aarch64/Packages.gz
 )
 
+echo "[*] Regenerating dists/stable/Release metadata (hashes + sizes)..."
+(
+  cd "$PAGES_REPO_DIR/dists/stable"
+
+  # Base fields for apt Release
+  DATE_RFC2822="$(date -Ru)"
+  cat > Release <<EOF
+Origin: com.neonide.studio
+Label: com.neonide.studio
+Suite: stable
+Codename: stable
+Date: ${DATE_RFC2822}
+Architectures: aarch64
+Components: main
+Description: NeonIDE APT repo
+EOF
+
+  add_section() {
+    local title="$1"
+    local cmd="$2"
+    echo "${title}:" >> Release
+    for f in Release main/binary-aarch64/Packages main/binary-aarch64/Packages.gz; do
+      local hash size
+      hash="$($cmd "$f" | awk '{print $1}')"
+      size="$(wc -c < "$f" | tr -d ' ')"
+      printf ' %s %16s %s\n' "$hash" "$size" "$f" >> Release
+    done
+  }
+
+  add_section "MD5Sum" md5sum
+  add_section "SHA1" sha1sum
+  add_section "SHA256" sha256sum
+  add_section "SHA512" sha512sum
+)
+
 # Show changes summary
 (
   cd "$PAGES_REPO_DIR"
