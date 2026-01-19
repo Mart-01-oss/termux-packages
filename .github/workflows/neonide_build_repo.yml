@@ -95,7 +95,8 @@ jobs:
           TERMUX_DOCKER__HOST_TERMUX_TOPDIR: /mnt/termux-topdir
         run: |
           set -euo pipefail
-          mkdir -p /mnt/termux-topdir
+          sudo mkdir -p /mnt/termux-topdir
+          sudo chown -R "$USER:$USER" /mnt/termux-topdir
           ./scripts/run-docker.sh bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi'
 
       - name: Build missing packages & update repo metadata
@@ -114,6 +115,8 @@ jobs:
           NEONIDE_GPG_KEY_ID: ${{ secrets.NEONIDE_GPG_KEY_ID }}
         run: |
           set -euo pipefail
+          sudo mkdir -p /mnt/termux-topdir
+          sudo chown -R "$USER:$USER" /mnt/termux-topdir
           ./scripts/neonide-build-and-publish-pages.sh
 
       - name: Commit & push pages repo changes (if any)
