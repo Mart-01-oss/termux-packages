@@ -14,6 +14,12 @@ TERMUX_PKG_RECOMMENDS="ca-certificates-java, openjdk-21-x, resolv-conf"
 TERMUX_PKG_SUGGESTS="cups"
 TERMUX_PKG_BUILD_IN_SRC=true
 TERMUX_PKG_HAS_DEBUG=false
+
+# The resulting openjdk .deb can be borderline for GitHub Pages publishing via git
+# (GitHub has a hard 100MB blob limit). Use stronger xz compression for the deb
+# payload to reduce the .deb size.
+TERMUX_PKG_XZ_OPT='-9e'
+
 # enable lto, but do not explicitly enable zgc or shenandoahgc because they
 # are automatically enabled for x86, but are not supported for arm.
 __jvm_features="link-time-opt"

@@ -3,7 +3,10 @@ termux_step_create_debian_package() {
 		# Metapackage doesn't have data inside.
 		rm -rf data
 	fi
-	tar --sort=name \
+	# Allow packages to tweak xz compression (useful to keep very large packages below hosting limits).
+	# Example: TERMUX_PKG_XZ_OPT='-9e'
+	local _xz_opt="${TERMUX_PKG_XZ_OPT:-${XZ_OPT:-}}"
+	XZ_OPT="${_xz_opt}" tar --sort=name \
 		--mtime="@${SOURCE_DATE_EPOCH}" \
 		--owner=0 --group=0 --numeric-owner \
 		-cJf "$TERMUX_PKG_PACKAGEDIR/data.tar.xz" -H gnu .
@@ -56,7 +59,7 @@ termux_step_create_debian_package() {
 	termux_step_update_alternatives
 
 	# Create control.tar.xz
-	tar --sort=name \
+	XZ_OPT="${_xz_opt}" tar --sort=name \
 		--mtime="@${SOURCE_DATE_EPOCH}" \
 		--owner=0 --group=0 --numeric-owner \
 		-cJf "$TERMUX_PKG_PACKAGEDIR/control.tar.xz" -H gnu .
