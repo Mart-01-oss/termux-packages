@@ -74,9 +74,14 @@ jobs:
             echo "No signing key configured (NEONIDE_GPG_PRIVATE_KEY_B64/NEONIDE_GPG_KEY_ID missing). Repo will be unsigned."
             exit 0
           fi
+
+          # Import private key (base64 encoded ASCII-armored export)
           echo "$NEONIDE_GPG_PRIVATE_KEY_B64" | base64 -d | gpg --batch --import
-          # Trust the key locally so gpg can sign in non-interactive mode
-          printf 'trust\n5\ny\n' | gpg --batch --command-fd 0 --edit-key "$NEONIDE_GPG_KEY_ID" >/dev/null
+
+          # IMPORTANT: Do not use 'gpg --edit-key' here (it becomes interactive on newer gpg).
+          # Trust is not required for signing with an available secret key.
+          echo "Secret key is available."
+          gpg --batch --list-secret-keys --keyid-format=long "$NEONIDE_GPG_KEY_ID" | sed -n '1,120p'
 
       - name: Checkout pages repo
         env:
