@@ -1,6 +1,12 @@
 {
   "pkg_format": "debian",
   "packages": {
+    "name": "neonide-main",
+    "distribution": "stable",
+    "component": "main",
+    "url": "https://mart-01-oss.github.io/pages"
+  },
+  "packages-fallback": {
     "name": "termux-main",
     "distribution": "stable",
     "component": "main",

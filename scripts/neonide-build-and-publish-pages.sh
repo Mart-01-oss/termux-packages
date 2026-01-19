@@ -194,10 +194,15 @@ build_and_publish_srcpkg() {
 
   # Ensure TERMUX_HOST_LLVM_BASE_DIR points to a directory that has bin/clang inside the container.
   # Also force BUILD_CC to avoid configure failures caused by missing /usr/bin/clang in the builder image.
+  # Enable dependency downloading (-i) from repositories when possible.
+  # We set TERMUX_REPO_APP__PACKAGE_NAME to match TERMUX_APP_PACKAGE (com.neonide.studio)
+  # so build-package.sh does not ignore -i. Repo URLs are taken from repo.json and can
+  # include both NeonIDE pages (preferred) and official Termux (fallback).
   ./scripts/run-docker.sh env \
     TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" \
     BUILD_CC="$HOST_LLVM_BASE_DIR_IN_CONTAINER/bin/clang" \
-    ./build-package.sh -a "$TERMUX_ARCH" "$srcpkg"
+    TERMUX_REPO_APP__PACKAGE_NAME="com.neonide.studio" \
+    ./build-package.sh -i -a "$TERMUX_ARCH" "$srcpkg"
 
   # Determine which .debs belong to this recipe: main package + subpackages.
   declare -a names=("$srcpkg")
