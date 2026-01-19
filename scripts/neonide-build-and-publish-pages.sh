@@ -204,29 +204,31 @@ build_and_publish_srcpkg() {
     TERMUX_REPO_APP__PACKAGE_NAME="com.neonide.studio" \
     ./build-package.sh -i -a "$TERMUX_ARCH" "$srcpkg"
 
-  # Determine which .debs belong to this recipe: main package + subpackages.
-  declare -a names=("$srcpkg")
-  for f in "packages/$srcpkg"/*.subpackage.sh; do
-    [[ -f "$f" ]] || continue
-    names+=("$(basename "${f%.subpackage.sh}")")
-  done
-
-  local group dest
-  group="$(pool_group_for_pkg "$srcpkg")"
-  dest="$PAGES_REPO_DIR/pool/main/$group/$srcpkg"
-  mkdir -p "$dest"
-
+  # Upload ALL produced debs (including dependencies) from output/ into pages pool.
+  # This speeds up later runs because build-package.sh -i can download these deps
+  # instead of rebuilding them.
   local copied=0
-  for n in "${names[@]}"; do
-    for deb in output/"${n}"_*_"${TERMUX_ARCH}".deb output/"${n}"_*_all.deb; do
-      [[ -f "$deb" ]] || continue
-      cp -f "$deb" "$dest/"
-      copied=1
-    done
+  shopt -s nullglob
+  for deb in output/*.deb; do
+    # deb filename format: <pkgname>_<version>_<arch>.deb
+    local pkgname
+    pkgname="$(basename "$deb" | sed -E 's/^([^_]+)_.*/\1/')"
+    if [[ -z "$pkgname" ]]; then
+      continue
+    fi
+
+    local group dest
+    group="$(pool_group_for_pkg "$pkgname")"
+    dest="$PAGES_REPO_DIR/pool/main/$group/$pkgname"
+    mkdir -p "$dest"
+
+    cp -f "$deb" "$dest/"
+    copied=1
   done
+  shopt -u nullglob
 
   if [[ $copied -ne 1 ]]; then
-    echo "WARN: No debs copied for '$srcpkg'. It may have produced differently named packages." >&2
+    echo "WARN: No debs found in output/ to upload for '$srcpkg'." >&2
   fi
 }
 
