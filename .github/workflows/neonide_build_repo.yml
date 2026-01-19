@@ -111,6 +111,8 @@ jobs:
           EXCLUDE_BOOTSTRAP_LIST: ${{ github.workspace }}/scripts/neonide-bootstrap-packages.txt
           # Desired list: build all package recipes (incremental batches)
           DESIRED_PACKAGES_SOURCE: recipes
+          # Allow using unsigned repo metadata for custom pages repo (fallback official repo still verified)
+          TERMUX_ALLOW_UNVERIFIED_REPOS: "true"
           # Optional signing
           NEONIDE_GPG_KEY_ID: ${{ secrets.NEONIDE_GPG_KEY_ID }}
         run: |
