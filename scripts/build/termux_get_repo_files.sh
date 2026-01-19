@@ -40,15 +40,16 @@ termux_get_repo_files() {
 				# Some repos (e.g. custom GitHub Pages repos) may not provide Release.gpg.
 				# Allow skipping signature verification for such repos when explicitly enabled.
 				if termux_download "${RELEASE_FILE_URL}" "${RELEASE_FILE}" SKIP_CHECKSUM; then
-					if termux_download "${RELEASE_FILE_SIG_URL}" "${RELEASE_FILE}.gpg" SKIP_CHECKSUM; then
-						if ! gpg --verify "${RELEASE_FILE}.gpg" "${RELEASE_FILE}"; then
-							echo "GPG verification failed, probably we downloaded corrupted metadata. Retrying in $delay seconds."
-							sleep "$delay"
-							continue
-						fi
+					if [[ "${TERMUX_ALLOW_UNVERIFIED_REPOS-false}" == "true" ]]; then
+						# Skip signature download entirely to avoid long retry delays on 404.
+						echo "WARNING: Skipping signature download for ${RELEASE_FILE_SIG_URL} due to TERMUX_ALLOW_UNVERIFIED_REPOS=true."
 					else
-						if [[ "${TERMUX_ALLOW_UNVERIFIED_REPOS-false}" == "true" ]]; then
-							echo "WARNING: Missing signature file ${RELEASE_FILE_SIG_URL}; continuing without verification due to TERMUX_ALLOW_UNVERIFIED_REPOS=true."
+						if termux_download "${RELEASE_FILE_SIG_URL}" "${RELEASE_FILE}.gpg" SKIP_CHECKSUM; then
+							if ! gpg --verify "${RELEASE_FILE}.gpg" "${RELEASE_FILE}"; then
+								echo "GPG verification failed, probably we downloaded corrupted metadata. Retrying in $delay seconds."
+								sleep "$delay"
+								continue
+							fi
 						else
 							echo "Failed to download ${RELEASE_FILE_SIG_URL}"
 							sleep "$delay"
