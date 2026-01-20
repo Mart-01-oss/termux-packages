@@ -37,6 +37,11 @@ cd "$REPO_ROOT"
 : "${DESIRED_PACKAGES_SOURCE:=recipes}"
 : "${DESIRED_PACKAGES_FILE:=}"
 
+# Some packages (e.g. cmake) depend on system libraries that may require
+# updated headers/layout in the repo (e.g. jsoncpp provides json/features.h compat).
+# Build these early to avoid failing later packages in the same batch.
+: "${PRIORITY_PACKAGES:=jsoncpp}"
+
 PAGES_PACKAGES_INDEX_PATH_DEFAULT="$PAGES_REPO_DIR/dists/stable/main/binary-aarch64/Packages"
 : "${PAGES_PACKAGES_INDEX_PATH:=$PAGES_PACKAGES_INDEX_PATH_DEFAULT}"
 
@@ -95,6 +100,26 @@ mapfile -t ALL_SRCPKGS < <(
       ;;
   esac
 )
+
+# Reorder ALL_SRCPKGS so priority packages are attempted first.
+# PRIORITY_PACKAGES is space/newline separated.
+if [[ -n "${PRIORITY_PACKAGES:-}" ]]; then
+  mapfile -t __priority < <(tr ' \t\r\n' '\n' <<<"$PRIORITY_PACKAGES" | sed '/^$/d')
+  declare -A __prio_set=()
+  for p in "${__priority[@]}"; do __prio_set["$p"]=1; done
+
+  mapfile -t ALL_SRCPKGS < <(
+    {
+      for p in "${__priority[@]}"; do
+        printf '%s\n' "$p"
+      done
+      for p in "${ALL_SRCPKGS[@]}"; do
+        [[ -n "${__prio_set[$p]:-}" ]] && continue
+        printf '%s\n' "$p"
+      done
+    } | awk '!seen[$0]++'
+  )
+fi
 
 if [[ ${#ALL_SRCPKGS[@]} -eq 0 ]]; then
   echo "ERROR: Desired package list is empty (source=$DESIRED_PACKAGES_SOURCE)" >&2
