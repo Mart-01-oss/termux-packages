@@ -40,3 +40,24 @@ termux_step_pre_configure() {
 	# so if rebuilding these are not detected as modified. Fix that:
 	rm -f $TERMUX_PREFIX/lib/libjsoncpp.so*
 }
+
+# CMake's FindJsonCpp.cmake varies across projects/distros.
+# Some expect headers under:
+#   $PREFIX/include/json/json.h
+# while others expect Debian-style:
+#   $PREFIX/include/jsoncpp/json/json.h
+#
+# Provide a compatibility include tree so builds (notably cmake itself with
+# -DCMAKE_USE_SYSTEM_JSONCPP=ON) can reliably locate JsonCpp headers.
+termux_step_post_make_install() {
+	local src_dir="$TERMUX_PREFIX/include/json"
+	local compat_dir="$TERMUX_PREFIX/include/jsoncpp/json"
+
+	if [ -d "$src_dir" ]; then
+		mkdir -p "$compat_dir"
+		for header in "$src_dir"/*.h; do
+			[ -e "$header" ] || continue
+			ln -sf "../../json/$(basename "$header")" "$compat_dir/$(basename "$header")"
+		done
+	fi
+}
