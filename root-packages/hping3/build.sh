@@ -5,9 +5,10 @@ TERMUX_PKG_LICENSE="GPL-2.0"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION=3.0.0
 TERMUX_PKG_REVISION=4
-#TERMUX_PKG_SRCURL=http://www.hping.org/hping3-20051105.tar.gz
-TERMUX_PKG_SRCURL=https://fossies.org/linux/privat/old/hping3-20051105.tar.gz
-TERMUX_PKG_SHA256=f5a671a62a11dc8114fa98eade19542ed1c3aa3c832b0e572ca0eb1a5a4faee8
+# Original upstream site (hping.org) is often unavailable.
+# Use Debian orig tarball mirror.
+TERMUX_PKG_SRCURL=https://deb.debian.org/debian/pool/main/h/hping3/hping3_3.a2.ds2.orig.tar.gz
+TERMUX_PKG_SHA256=be027ed1bc1ebebd2a91c48936493024c3895e789c8490830e273ee7fe6fc09d
 TERMUX_PKG_DEPENDS="libandroid-shmem, libpcap, tcl"
 TERMUX_PKG_BUILD_IN_SRC=true
 

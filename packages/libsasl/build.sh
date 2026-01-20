@@ -4,8 +4,8 @@ TERMUX_PKG_LICENSE="BSD"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION=2.1.28
 TERMUX_PKG_REVISION=2
-TERMUX_PKG_SRCURL=https://fossies.org/linux/misc/cyrus-sasl-$TERMUX_PKG_VERSION.tar.xz
-TERMUX_PKG_SHA256=67f1945057d679414533a30fe860aeb2714f5167a8c03041e023a65f629a9351
+TERMUX_PKG_SRCURL=https://github.com/cyrusimap/cyrus-sasl/releases/download/cyrus-sasl-${TERMUX_PKG_VERSION}/cyrus-sasl-${TERMUX_PKG_VERSION}.tar.gz
+TERMUX_PKG_SHA256=7ccfc6abd01ed67c1a0924b353e526f1b766b21f42d4562ee635a8ebfc5bb38c
 TERMUX_PKG_BREAKS="libsasl-dev"
 TERMUX_PKG_REPLACES="libsasl-dev"
 # Seems to be race issues in build (symlink creation)::
