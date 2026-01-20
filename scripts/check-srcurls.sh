@@ -139,15 +139,15 @@ collect_urls_for_build_sh() {
   repo_path=$(dirname "$pkg_dir")
   pkg_name=$(basename "$pkg_dir")
 
-  # Evaluate TERMUX_PKG_SRCURL by sourcing build.sh in its directory.
-  # Disable nounset inside to avoid failures on undefined variables.
+  # First try evaluating TERMUX_PKG_SRCURL by sourcing build.sh.
+  # If that fails (some build.sh rely on external functions/commands),
+  # fall back to a conservative static parser that extracts literal URL strings.
   local urls ec
   set +e
   urls=$(bash -c '
     set -e
     set +u
     cd "$1"
-    # Some build.sh emit output when sourced; suppress to keep report clean.
     source ./build.sh >/dev/null 2>&1 || source ./build.sh
 
     if ! declare -p TERMUX_PKG_SRCURL >/dev/null 2>&1; then
@@ -159,7 +159,6 @@ collect_urls_for_build_sh() {
         echo "$u"
       done
     else
-      # Split on whitespace if multiple URLs were embedded in a single string.
       read -r -a _arr <<< "${TERMUX_PKG_SRCURL}"
       for u in "${_arr[@]}"; do
         echo "$u"
@@ -170,8 +169,18 @@ collect_urls_for_build_sh() {
   set -e
 
   if [[ $ec -ne 0 ]] || [[ -z "${urls:-}" ]]; then
-    printf '%s\t%s\t%s\n' "$repo_path" "$pkg_name" "EVAL_FAIL(build.sh)" >> "$TASKS_FILE"
-    return 0
+    # Static parse fallback: extract http(s)://... from TERMUX_PKG_SRCURL assignments.
+    # This won't expand variables, but it avoids marking a lot of packages as EVAL_FAIL.
+    urls=$(grep -E '^(TERMUX_PKG_SRCURL|TERMUX_PKG_SRCURL\+)=|^TERMUX_PKG_SRCURL=\(|^TERMUX_PKG_SRCURL=\(' -n "$build_sh" \
+      | cat >/dev/null; true)
+
+    # Just extract literal URLs from the file content.
+    urls=$(grep -Eo 'https?://[^"\x27 \t\n)]+' "$build_sh" | sort -u || true)
+
+    if [[ -z "${urls:-}" ]]; then
+      printf '%s\t%s\t%s\n' "$repo_path" "$pkg_name" "PARSE_FAIL(build.sh)" >> "$TASKS_FILE"
+      return 0
+    fi
   fi
 
   while IFS= read -r u; do
@@ -195,13 +204,17 @@ check_one_url() {
     return 0
   fi
 
+  if [[ "$url" == PARSE_FAIL* ]]; then
+    printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$repo" "$pkg" "$url" "PARSE_FAIL" "" ""
+    return 0
+  fi
+
   if [[ ! "$url" =~ ^https?:// ]]; then
     printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$repo" "$pkg" "$url" "SKIP_UNSUPPORTED_SCHEME" "" ""
     return 0
   fi
 
   local http_code curl_exit
-  curl_exit=0
 
   # Avoid "set -e" exiting on curl failures.
   set +e
@@ -213,13 +226,15 @@ check_one_url() {
   local result
   if [[ $curl_exit -ne 0 ]]; then
     result="CURL_ERROR"
+    # http_code from curl is not meaningful on failures; normalize.
+    http_code=""
   else
     case "$http_code" in
       2*|3*) result="OK";;
       404) result="HTTP_404";;
       410) result="HTTP_410";;
       5*) result="HTTP_5XX";;
-      000|"") result="NO_HTTP_CODE";;
+      ""|000) result="NO_HTTP_CODE";;
       *) result="HTTP_${http_code}";;
     esac
   fi
