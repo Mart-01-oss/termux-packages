@@ -4,7 +4,8 @@ TERMUX_PKG_LICENSE="Apache-2.0"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION="2.2.0"
 TERMUX_PKG_REVISION=2
-TERMUX_PKG_SRCURL=https://dlcdn.apache.org/orc/orc-${TERMUX_PKG_VERSION}/orc-${TERMUX_PKG_VERSION}.tar.gz
+# NOTE: dlcdn/downloads mirrors may not keep older releases; use ASF archive for reproducibility.
+TERMUX_PKG_SRCURL=https://archive.apache.org/dist/orc/orc-${TERMUX_PKG_VERSION}/orc-${TERMUX_PKG_VERSION}.tar.gz
 TERMUX_PKG_SHA256=b15aca45a7e73ffbd1bbc36a78cd1422d41f07721092a25f43448e6e16f4763b
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_UPDATE_METHOD=repology

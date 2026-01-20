@@ -341,6 +341,19 @@ if command -v gpg >/dev/null 2>&1 && [[ -n "${NEONIDE_GPG_KEY_ID:-}" ]]; then
       rm -f Release.gpg || true
     fi
   )
+
+  # Publish the public key for clients.
+  #
+  # IMPORTANT:
+  # - `Release.gpg` is a detached signature, NOT a public key.
+  # - APT clients need the public key to verify `InRelease` / `Release.gpg`.
+  #
+  # Exporting the public key into the pages repo avoids unreliable keyservers.
+  echo "[*] Exporting public key -> $PAGES_REPO_DIR/neonide.gpg"
+  gpg --batch --yes --export "$NEONIDE_GPG_KEY_ID" > "$PAGES_REPO_DIR/neonide.gpg"
+
+  # Optional human-readable (ASCII-armored) key export.
+  # gpg --batch --yes --armor --export "$NEONIDE_GPG_KEY_ID" > "$PAGES_REPO_DIR/neonide.asc"
 else
   echo "[*] Skipping signing (set NEONIDE_GPG_KEY_ID and ensure gpg is installed)."
 fi
