@@ -2242,6 +2242,26 @@ else
         done
         unset __extra_urls __extra_dists __extra_comps
     fi
+
+    # Default fallback (opt-out) for CI forks: when a custom repo URL is missing a dependency
+    # (e.g. circular dependency resolution installing older package), automatically fall back
+    # to official Termux repos.
+    : "${TERMUX_USE_OFFICIAL_REPO_FALLBACK:=true}"
+    if [[ "${TERMUX_USE_OFFICIAL_REPO_FALLBACK}" == "true" ]]; then
+        __repo_pkg_format=$(jq --raw-output '.pkg_format // "debian"' "$TERMUX_PKGS__BUILD__REPO_ROOT_DIR/repo.json")
+        if [[ "$__repo_pkg_format" == "debian" ]]; then
+            for __official_url in \
+                "https://packages-cf.termux.dev/apt/termux-main" \
+                "https://packages.termux.dev/apt/termux-main"; do
+                if [[ ! " ${TERMUX_REPO_URL[*]} " =~ " ${__official_url} " ]]; then
+                    TERMUX_REPO_URL+=("${__official_url}")
+                    TERMUX_REPO_DISTRIBUTION+=("stable")
+                    TERMUX_REPO_COMPONENT+=("main")
+                fi
+            done
+        fi
+        unset __repo_pkg_format __official_url
+    fi
 fi
 
 
