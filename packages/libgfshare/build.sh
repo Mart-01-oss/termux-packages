@@ -1,11 +1,13 @@
-TERMUX_PKG_HOMEPAGE=https://www.digital-scurf.org/software/libgfshare
+TERMUX_PKG_HOMEPAGE=https://github.com/kinnison/libgfshare
 TERMUX_PKG_DESCRIPTION="Utilities for multi-way secret-sharing"
 TERMUX_PKG_LICENSE="MIT"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION=2.0.0
 TERMUX_PKG_REVISION=8
-TERMUX_PKG_SRCURL=https://www.digital-scurf.org/files/libgfshare/libgfshare-$TERMUX_PKG_VERSION.tar.bz2
-TERMUX_PKG_SHA256=86f602860133c828356b7cf7b8c319ba9b27adf70a624fe32275ba1ed268331f
+# Original upstream site (digital-scurf.org) is frequently unavailable.
+# Use Debian's orig tarball mirror which tracks upstream releases.
+TERMUX_PKG_SRCURL=http://deb.debian.org/debian/pool/main/libg/libgfshare/libgfshare_${TERMUX_PKG_VERSION}.orig.tar.gz
+TERMUX_PKG_SHA256=04442efb602a5fc8d79604845816811ab2d970e07e9aa5c8962b86b88e284838
 TERMUX_PKG_BREAKS="libgfshare-dev"
 TERMUX_PKG_REPLACES="libgfshare-dev"
 
