@@ -22,6 +22,10 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -DCMAKE_USE_SYSTEM_JSONCPP=ON
 -DCMAKE_USE_SYSTEM_LIBARCHIVE=ON
 -DCMAKE_USE_SYSTEM_LIBRHASH=ON
+# Help CMake's FindLibRHash.cmake locate Termux-installed librhash.
+# RHash installs headers under $PREFIX/include/librhash/.
+-DLibRHash_INCLUDE_DIR=${TERMUX_PREFIX}/include/librhash
+-DLibRHash_LIBRARY=${TERMUX_PREFIX}/lib/librhash.so
 -DCMAKE_USE_SYSTEM_LIBUV=ON
 -DCMAKE_USE_SYSTEM_ZLIB=ON
 -DBUILD_CursesDialog=ON"
