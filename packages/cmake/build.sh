@@ -47,6 +47,29 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -DCMAKE_USE_SYSTEM_ZLIB=ON
 -DBUILD_CursesDialog=ON"
 
+termux_step_pre_configure() {
+	# CMake's own build uses find_package(LibUV <minver>) in
+	# Source/Modules/CMakeBuildUtilities.cmake. That relies on FindLibUV.cmake
+	# extracting a version from headers.
+	#
+	# On some environments we observed FindLibUV failing to extract the version
+	# even when libuv is correctly installed, which makes the build fail with:
+	#   CMAKE_USE_SYSTEM_LIBUV is ON but a libuv is not found!
+	#
+	# Pre-seed LibUV_VERSION from Termux-installed headers so the find module has
+	# a reliable version value.
+	local _uv_version_h="${TERMUX_PREFIX}/include/uv/version.h"
+	if [ -f "${_uv_version_h}" ]; then
+		local _uv_major _uv_minor _uv_patch
+		_uv_major=$(grep -m1 -E '^#define[[:space:]]+UV_VERSION_MAJOR[[:space:]]+' "${_uv_version_h}" | awk '{print $3}')
+		_uv_minor=$(grep -m1 -E '^#define[[:space:]]+UV_VERSION_MINOR[[:space:]]+' "${_uv_version_h}" | awk '{print $3}')
+		_uv_patch=$(grep -m1 -E '^#define[[:space:]]+UV_VERSION_PATCH[[:space:]]+' "${_uv_version_h}" | awk '{print $3}')
+		if [ -n "${_uv_major}" ] && [ -n "${_uv_minor}" ] && [ -n "${_uv_patch}" ]; then
+			TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -DLibUV_VERSION=${_uv_major}.${_uv_minor}.${_uv_patch}"
+		fi
+	fi
+}
+
 termux_pkg_auto_update() {
 	local TERMUX_SETUP_CMAKE="${TERMUX_SCRIPTDIR}/scripts/build/setup/termux_setup_cmake.sh"
 	local TERMUX_REPOLOGY_DATA_FILE=$(mktemp)
