@@ -1,15 +1,9 @@
 --- a/Source/Modules/FindLibUV.cmake
 +++ b/Source/Modules/FindLibUV.cmake
-@@ -63,6 +63,14 @@
+@@ -63,6 +63,9 @@
  set(_LibUV_H_REGEX "#[ \t]*define[ \t]+UV_VERSION_(MAJOR|MINOR|PATCH)[ \t]+[0-9]+")
 -if(LibUV_INCLUDE_DIR AND EXISTS "${LibUV_INCLUDE_DIR}/uv-version.h")
 -  file(STRINGS "${LibUV_INCLUDE_DIR}/uv-version.h" _LibUV_H REGEX "${_LibUV_H_REGEX}")
--  # Termux installs UV_VERSION_* macros in <prefix>/include/uv/version.h.
--  # Some setups may also ship <prefix>/include/uv-version.h which may not contain the macros.
--  # If uv-version.h did not match, fall back to uv/version.h.
--  if(_LibUV_H STREQUAL "" AND EXISTS "${LibUV_INCLUDE_DIR}/uv/version.h")
--    file(STRINGS "${LibUV_INCLUDE_DIR}/uv/version.h" _LibUV_H REGEX "${_LibUV_H_REGEX}")
--  endif()
 -elseif(LibUV_INCLUDE_DIR AND EXISTS "${LibUV_INCLUDE_DIR}/uv/version.h")
 -  file(STRINGS "${LibUV_INCLUDE_DIR}/uv/version.h" _LibUV_H REGEX "${_LibUV_H_REGEX}")
 +if(LibUV_INCLUDE_DIR AND EXISTS "${LibUV_INCLUDE_DIR}/uv/version.h")
@@ -20,4 +14,3 @@
 +elseif(LibUV_INCLUDE_DIR AND EXISTS "${LibUV_INCLUDE_DIR}/uv-version.h")
 +  file(STRINGS "${LibUV_INCLUDE_DIR}/uv-version.h" _LibUV_H REGEX "${_LibUV_H_REGEX}")
  elseif(LibUV_INCLUDE_DIR AND EXISTS "${LibUV_INCLUDE_DIR}/uv.h")
-
