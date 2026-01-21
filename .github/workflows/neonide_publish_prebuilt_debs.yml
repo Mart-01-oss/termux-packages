@@ -1,0 +1,105 @@
+name: NeonIDE - Publish prebuilt .deb(s) to pages APT repo
+
+on:
+  workflow_dispatch:
+    inputs:
+      deb_artifact_name:
+        description: "Name of the uploaded artifact that contains .deb files (leave as-is if using artifact upload)"
+        required: true
+        default: "prebuilt-debs"
+      deb_file_path:
+        description: "Optional: path to a single .deb already present in this repo checkout (e.g. cmake_4.2.2_aarch64.deb). If set, artifact download step is skipped."
+        required: false
+        default: ""
+      apt_dist:
+        description: "APT distribution (dists/<dist>)"
+        required: false
+        default: "stable"
+      apt_component:
+        description: "APT component (pool/<component>)"
+        required: false
+        default: "main"
+      apt_arch:
+        description: "APT arch directory (binary-<arch>)"
+        required: false
+        default: "aarch64"
+      force_overwrite:
+        description: "Overwrite existing debs even if different"
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout termux-packages
+        uses: actions/checkout@v5
+
+      - name: Install host tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends dpkg-dev gzip ca-certificates git gnupg
+
+      - name: Download prebuilt deb artifact
+        if: ${{ inputs.deb_file_path == '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.deb_artifact_name }}
+          path: prebuilt-debs
+
+      - name: List downloaded files
+        if: ${{ inputs.deb_file_path == '' }}
+        run: |
+          set -euo pipefail
+          find prebuilt-debs -type f -maxdepth 2 -print
+          ls -lah prebuilt-debs || true
+
+      - name: Checkout pages repo
+        env:
+          PAGES_PAT: ${{ secrets.PAGES_PAT }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PAGES_PAT:-}" ]; then
+            echo "::error ::Missing secret PAGES_PAT (needs push access to Mart-01-oss/pages.git)"
+            exit 1
+          fi
+          rm -rf pages-repo
+          git clone "https://x-access-token:${PAGES_PAT}@github.com/Mart-01-oss/pages.git" pages-repo
+
+      - name: Publish debs into pages APT repo
+        env:
+          PAGES_REPO_DIR: ${{ github.workspace }}/pages-repo
+          # Either publish a whole artifact dir or a single deb file path.
+          DEBS_DIR: ${{ inputs.deb_file_path == '' && format('{0}/prebuilt-debs', github.workspace) || '' }}
+          DEB_FILE: ${{ inputs.deb_file_path != '' && format('{0}/{1}', github.workspace, inputs.deb_file_path) || '' }}
+          APT_DIST: ${{ inputs.apt_dist }}
+          APT_COMPONENT: ${{ inputs.apt_component }}
+          APT_ARCH: ${{ inputs.apt_arch }}
+          FORCE_OVERWRITE: ${{ inputs.force_overwrite && 'true' || 'false' }}
+          NEONIDE_GPG_KEY_ID: ${{ secrets.NEONIDE_GPG_KEY_ID }}
+          NEONIDE_GPG_PASSPHRASE: ${{ secrets.NEONIDE_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          bash ./scripts/neonide-publish-prebuilt-debs.sh
+
+      - name: Commit & push pages repo changes (if any)
+        env:
+          PAGES_PAT: ${{ secrets.PAGES_PAT }}
+        run: |
+          set -euo pipefail
+          cd pages-repo
+          if [ -z "$(git status --porcelain=v1)" ]; then
+            echo "No changes to push."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish prebuilt debs (${{ inputs.deb_artifact_name }})"
+          git push origin main
