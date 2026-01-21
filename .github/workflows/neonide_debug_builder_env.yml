@@ -188,6 +188,43 @@ jobs:
             ls -la "${TERMUX_PREFIX}/lib" 2>/dev/null | grep -i uv || true
             find "${TERMUX_PREFIX}/lib" -maxdepth 1 -type f -name 'libuv*' 2>/dev/null | head -n 50 || true
 
+            echo "=== DEBUG: LibUV detection context (prefix/files/pkg-config/permissions) ==="
+            echo "TERMUX_PREFIX=${TERMUX_PREFIX:-}"
+            echo "PREFIX=${PREFIX:-}"
+            echo "PATH=$PATH"
+            echo
+
+            echo "--- libuv headers ---"
+            ls -la "${TERMUX_PREFIX}/include/uv.h" 2>/dev/null || true
+            ls -la "${TERMUX_PREFIX}/include/uv/uv.h" 2>/dev/null || true
+            ls -la "${TERMUX_PREFIX}/include/uv/version.h" 2>/dev/null || true
+            # show version defines if headers exist
+            if [ -f "${TERMUX_PREFIX}/include/uv/version.h" ]; then
+              echo "--- uv/version.h defines ---"
+              grep -nE "UV_VERSION_(MAJOR|MINOR|PATCH)|UV_VERSION_HEX" "${TERMUX_PREFIX}/include/uv/version.h" | head -n 50 || true
+            fi
+            echo
+
+            echo "--- libuv library ---"
+            ls -la "${TERMUX_PREFIX}/lib/libuv.so"* 2>/dev/null || true
+            file "${TERMUX_PREFIX}/lib/libuv.so" 2>/dev/null || true
+            echo
+
+            echo "--- libuv pkg-config ---"
+            ls -la "${TERMUX_PREFIX}/lib/pkgconfig/libuv.pc" 2>/dev/null || true
+            if command -v pkg-config >/dev/null 2>&1; then
+              echo "pkg-config: $(command -v pkg-config)"
+              echo "PKG_CONFIG=${PKG_CONFIG:-}"
+              echo "PKG_CONFIG_LIBDIR=${PKG_CONFIG_LIBDIR:-}"
+              echo "PKG_CONFIG_PATH=${PKG_CONFIG_PATH:-}"
+              echo "-- forcing PKG_CONFIG_PATH to TERMUX_PREFIX --"
+              PKG_CONFIG_PATH="${TERMUX_PREFIX}/lib/pkgconfig:${TERMUX_PREFIX}/share/pkgconfig" pkg-config --modversion libuv || true
+              PKG_CONFIG_PATH="${TERMUX_PREFIX}/lib/pkgconfig:${TERMUX_PREFIX}/share/pkgconfig" pkg-config --cflags --libs libuv || true
+            else
+              echo "pkg-config not available"
+            fi
+            echo
+
             echo "=== STEP 2: Trigger dependency extraction by attempting cmake build (expected to fail) ==="
             set +e
             ./build-package.sh -i -a aarch64 cmake
