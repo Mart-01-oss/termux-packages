@@ -118,10 +118,10 @@ jobs:
           DESIRED_PACKAGES_SOURCE: recipes
           # Allow using unsigned repo metadata for custom pages repo (fallback official repo still verified)
           TERMUX_ALLOW_UNVERIFIED_REPOS: "true"
-          # IMPORTANT: Do NOT fall back to official Termux repositories when building for
-          # com.neonide.studio. Official Termux debs install to /data/data/com.termux/files/usr,
-          # which leads to missing headers/libs under the NeonIDE prefix during builds.
-          TERMUX_USE_OFFICIAL_REPO_FALLBACK: "false"
+          # Add official Termux main repo as fallback for dependency downloads
+          TERMUX_EXTRA_REPO_URL: "https://packages-cf.termux.dev/apt/termux-main"
+          TERMUX_EXTRA_REPO_DISTRIBUTION: "stable"
+          TERMUX_EXTRA_REPO_COMPONENT: "main"
           # Optional signing
           NEONIDE_GPG_KEY_ID: ${{ secrets.NEONIDE_GPG_KEY_ID }}
           NEONIDE_GPG_PASSPHRASE: ${{ secrets.NEONIDE_GPG_PASSPHRASE }}
