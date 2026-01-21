@@ -44,6 +44,7 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 # Help CMake's FindLibUV.cmake locate Termux-installed libuv.
 -DLibUV_INCLUDE_DIR=${TERMUX_PREFIX}/include
 -DLibUV_LIBRARY=${TERMUX_PREFIX}/lib/libuv.so
+-DLibUV_VERSION=1.51.0-1
 -DCMAKE_USE_SYSTEM_ZLIB=ON
 -DBUILD_CursesDialog=ON"
 
