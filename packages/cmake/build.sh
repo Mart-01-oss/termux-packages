@@ -40,11 +40,10 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 # RHash installs headers under $PREFIX/include/librhash/.
 -DLibRHash_INCLUDE_DIR=${TERMUX_PREFIX}/include/librhash
 -DLibRHash_LIBRARY=${TERMUX_PREFIX}/lib/librhash.so
-# NOTE: In some CI/SDK environments (including NeonIDE docker builds) CMake's
-# FindLibUV version detection can fail even when libuv is installed (e.g. header
-# layout differences or stale CMake cache). To keep bootstrap/repo builds working,
-# build CMake's bundled libuv instead of forcing system libuv.
--DCMAKE_USE_SYSTEM_LIBUV=OFF
+-DCMAKE_USE_SYSTEM_LIBUV=ON
+# Help CMake's FindLibUV.cmake locate Termux-installed libuv.
+-DLibUV_INCLUDE_DIR=${TERMUX_PREFIX}/include
+-DLibUV_LIBRARY=${TERMUX_PREFIX}/lib/libuv.so
 -DCMAKE_USE_SYSTEM_ZLIB=ON
 -DBUILD_CursesDialog=ON"
 
