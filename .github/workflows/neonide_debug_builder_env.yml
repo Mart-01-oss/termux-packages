@@ -199,10 +199,16 @@ jobs:
             find "${TERMUX_PREFIX}/include" -maxdepth 3 -type f 2>/dev/null | grep -i rhash | head -n 80 || true
 
             echo "=== STEP 3: Dump CMakeCache and error logs from the failing build (if present) ==="
-            find "$HOME/.termux-build" -path "*cmake*" -name CMakeCache.txt -print \
-              -exec sh -lc 'echo "---"; tail -n 120 "$1"' _ {} \; 2>/dev/null || true
-            find "$HOME/.termux-build" -path "*cmake*" -name CMakeError.log -print \
-              -exec sh -lc 'echo "---"; tail -n 200 "$1"' _ {} \; 2>/dev/null || true
+
+            for f in $(find "$HOME/.termux-build" -path "*cmake*" -name CMakeCache.txt 2>/dev/null); do
+              echo "--- $f ---"
+              tail -n 120 "$f" || true
+            done
+
+            for f in $(find "$HOME/.termux-build" -path "*cmake*" -name CMakeError.log 2>/dev/null); do
+              echo "--- $f ---"
+              tail -n 200 "$f" || true
+            done
           '
 
       - name: Docker cleanup (always)

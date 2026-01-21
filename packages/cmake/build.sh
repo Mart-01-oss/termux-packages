@@ -41,6 +41,9 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -DLibRHash_INCLUDE_DIR=${TERMUX_PREFIX}/include/librhash
 -DLibRHash_LIBRARY=${TERMUX_PREFIX}/lib/librhash.so
 -DCMAKE_USE_SYSTEM_LIBUV=ON
+# Help CMake's FindLibUV.cmake locate Termux-installed libuv.
+-DLibUV_INCLUDE_DIR=${TERMUX_PREFIX}/include
+-DLibUV_LIBRARY=${TERMUX_PREFIX}/lib/libuv.so
 -DCMAKE_USE_SYSTEM_ZLIB=ON
 -DBUILD_CursesDialog=ON"
 
