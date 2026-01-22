@@ -8,19 +8,22 @@ TERMUX_PKG_SHA256=4dd509614470b7e82695f46c8072bee603fbe6a260c2b74794af03204e4dfb
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_UPDATE_TAG_TYPE="newest-tag"
 TERMUX_PKG_DEPENDS="curl, glib, libfyaml, libxml2, libxmlb, zstd"
-TERMUX_PKG_BUILD_DEPENDS="g-ir-scanner, glib-cross, valac"
+TERMUX_PKG_BUILD_DEPENDS="glib-cross, valac"
+
+# NOTE: GIR/introspection requires gobject-introspection-1.0 at build time and
+# commonly fails in cross builds in CI. Disable it for reproducible builds.
+TERMUX_PKG_DISABLE_GIR=true
 TERMUX_PKG_VERSIONED_GIR=false
-TERMUX_PKG_DISABLE_GIR=false
+
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -Dapidocs=false
 -Ddocs=false
--Dgir=true
+-Dgir=false
 -Dstemming=false
 -Dsystemd=false
 -Dvapi=true
 "
 
 termux_step_pre_configure() {
-	termux_setup_gir
 	termux_setup_glib_cross_pkg_config_wrapper
 }
