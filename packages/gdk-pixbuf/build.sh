@@ -7,7 +7,6 @@ TERMUX_PKG_SRCURL=https://download.gnome.org/sources/gdk-pixbuf/${TERMUX_PKG_VER
 TERMUX_PKG_SHA256=ea4ed9930b10db0655fb24f7c35b3375a65c58afbc9d3eb7417a0fd112bb6b08
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_DEPENDS="glib, libpng, libtiff, libjpeg-turbo, zstd"
-TERMUX_PKG_BUILD_DEPENDS=""
 TERMUX_PKG_BREAKS="gdk-pixbuf-dev"
 TERMUX_PKG_REPLACES="gdk-pixbuf-dev"
 
