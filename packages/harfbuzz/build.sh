@@ -7,17 +7,23 @@ TERMUX_PKG_SRCURL=https://github.com/harfbuzz/harfbuzz/archive/refs/tags/${TERMU
 TERMUX_PKG_SHA256=624ddaa8211a57b538360555f7358dac9fa7a9e6000b65de06a91dbb392882ca
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_DEPENDS="freetype, glib, libcairo, libgraphite"
-TERMUX_PKG_BUILD_DEPENDS="g-ir-scanner, glib-cross"
+TERMUX_PKG_BUILD_DEPENDS="glib-cross"
 TERMUX_PKG_BREAKS="harfbuzz-dev"
 TERMUX_PKG_REPLACES="harfbuzz-dev"
+
+# NOTE: Introspection and some optional deps (e.g. graphite2) often cause CI
+# failures in cross builds when the corresponding .pc files are not available.
+# Keep the build reproducible by disabling them.
+TERMUX_PKG_DISABLE_GIR=true
 TERMUX_PKG_VERSIONED_GIR=false
-TERMUX_PKG_DISABLE_GIR=false
+
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -Dcpp_std=c++17
 -Ddocs=disabled
 -Dgobject=enabled
--Dgraphite=enabled
--Dintrospection=enabled
+-Dgraphite=disabled
+-Dgraphite2=disabled
+-Dintrospection=disabled
 -Dtests=disabled
 "
 TERMUX_PKG_RM_AFTER_INSTALL="
@@ -38,7 +44,6 @@ termux_step_post_get_source() {
 }
 
 termux_step_pre_configure() {
-	termux_setup_gir
 	termux_setup_glib_cross_pkg_config_wrapper
 }
 
