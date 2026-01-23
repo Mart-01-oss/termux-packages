@@ -76,6 +76,13 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Ensure artifact directory always exists, even if an early step fails.
+      - name: Prepare per-shard artifact directory (always)
+        run: |
+          set -euo pipefail
+          mkdir -p prebuilt-debs
+          : > prebuilt-debs/.keep
+
       - name: Prepare TERMUX_TOPDIR mount on runner
         run: |
           set -euo pipefail
@@ -105,7 +112,9 @@ jobs:
           git clone --depth 1 --filter=blob:none --sparse https://github.com/Mart-01-oss/pages.git pages-repo
           (
             cd pages-repo
-            git sparse-checkout set dists/stable/main/binary-aarch64/Packages
+            # sparse-checkout uses cone mode by default; patterns must be directories.
+            # Checkout the directory that contains Packages.
+            git sparse-checkout set dists/stable/main/binary-aarch64
           )
 
       - id: select
@@ -205,12 +214,6 @@ jobs:
             sed -n '1,200p' "$out"
             echo "has_packages=true" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Prepare per-shard artifact directory (always)
-        run: |
-          set -euo pipefail
-          mkdir -p prebuilt-debs
-          : > prebuilt-debs/.keep
 
       # From here on, do the heavy CI setup only if we actually need to build.
       - name: Disk space (before)
