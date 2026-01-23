@@ -1,5 +1,11 @@
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
+@@ -1,4 +1,4 @@
+-cmake_minimum_required(VERSION 3.0)
++cmake_minimum_required(VERSION 3.5)
+ 
+ project(biboumi)
+ 
 @@ -350,9 +350,8 @@
  #
  install(TARGETS ${PROJECT_NAME} RUNTIME                     DESTINATION bin)
@@ -7,7 +13,7 @@
 -install(FILES   ${CMAKE_CURRENT_BINARY_DIR}/biboumi.service DESTINATION lib/systemd/system     COMPONENT init)
  file(GLOB policy_files conf/*policy.txt)
 -install(FILES   ${policy_files}                             DESTINATION /etc/biboumi           COMPONENT configuration)
-+install(FILES   ${policy_files}                             DESTINATION etc/biboumi           COMPONENT configuration)
++install(FILES   ${policy_files}                             DESTINATION etc/biboumi            COMPONENT configuration)
  
  #
  ## Dist target
