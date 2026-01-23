@@ -303,7 +303,11 @@ jobs:
 
             shopt -s nullglob
             for deb in output/*.deb; do
-              cp -f "$deb" prebuilt-debs/
+              base="$(basename "$deb")"
+              # GitHub upload-artifact rejects filenames with ':' (and some other chars)
+              # to remain filesystem-agnostic (e.g. Windows/NTFS).
+              safe="${base//:/+}"
+              cp -f "$deb" "prebuilt-debs/$safe"
             done
             shopt -u nullglob
           done < shard-packages.txt
