@@ -23,6 +23,12 @@ termux_step_pre_configure() {
 	export LIBGIT2_SYS_USE_PKG_CONFIG=1
 	export LIBSSH2_SYS_USE_PKG_CONFIG=1
 
+	# cargo-c currently pulls in dependencies (via crates.io) that require a
+	# newer rustc than the default provided by termux_setup_rust.
+	#
+	# See CI failure: cargo-util/crates-io requiring rustc >= 1.91.
+	export TERMUX_RUST_VERSION=1.91.0
+
 	termux_setup_rust
 
 	if [[ "${TERMUX_ARCH}" == "x86_64" ]]; then

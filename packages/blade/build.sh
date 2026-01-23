@@ -19,6 +19,15 @@ termux_step_host_build() {
 }
 
 termux_step_pre_configure() {
+	# CMake's FindPkgConfig honors PKG_CONFIG_SYSROOT_DIR and will prefix absolute
+	# include dirs returned by pkg-config with it.
+	#
+	# Termux .pc files already contain the full $TERMUX_PREFIX in include/library
+	# paths, so having PKG_CONFIG_SYSROOT_DIR set results in duplicated paths like:
+	#   $TERMUX_PREFIX$TERMUX_PREFIX/include
+	# which then breaks CMake configuration (e.g. PkgConfig::LIBGD).
+	export PKG_CONFIG_SYSROOT_DIR=
+
 	PATH=$TERMUX_PKG_HOSTBUILD_DIR/blade:$PATH
 	export LD_LIBRARY_PATH=$TERMUX_PKG_HOSTBUILD_DIR/blade
 }
