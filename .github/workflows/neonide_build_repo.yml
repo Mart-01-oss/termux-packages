@@ -1,6 +1,16 @@
 name: NeonIDE - Build & publish APT repo (aarch64)
 
 on:
+  push:
+    branches:
+    - master
+    - main
+    - dev
+    - 'dev/**'
+    paths:
+    - 'packages/**'
+    - 'root-packages/**'
+    - 'x11-packages/**'
   workflow_dispatch:
     inputs:
       batch_size:
