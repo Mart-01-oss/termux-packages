@@ -81,7 +81,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p prebuilt-debs
-          : > prebuilt-debs/.keep
+          # upload-artifact ignores hidden files by default, so keep a non-hidden placeholder
+          # to avoid "No files were found" when a shard does not build any debs.
+          : > prebuilt-debs/.placeholder
+          : > prebuilt-debs/EMPTY
 
       - name: Prepare TERMUX_TOPDIR mount on runner
         run: |
@@ -150,7 +153,7 @@ jobs:
             while IFS= read -r p; do
               [ -z "$p" ] && continue
               PUBLISHED["$p"]=1
-            done < <(grep -E '^Package: ' "$PAGES_PACKAGES" | sed -E 's/^Package: //' | sort -u)
+            done < <((grep -E '^Package: ' "$PAGES_PACKAGES" || true) | sed -E 's/^Package: //' | sort -u)
           fi
 
           # Enumerate source recipes (top-level ./packages/<name>)
