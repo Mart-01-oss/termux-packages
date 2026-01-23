@@ -1,16 +1,16 @@
 name: Packages
 
 on:
-  push:
-    branches:
-    - master
-    - main
-    - dev
-    - 'dev/**'
-    paths:
-    - 'packages/**'
-    - 'root-packages/**'
-    - 'x11-packages/**'
+  #push:
+    #branches:
+    #- master
+    #- main
+    #- dev
+    #- 'dev/**'
+    #paths:
+    #- 'packages/**'
+    #- 'root-packages/**'
+    #- 'x11-packages/**'
   pull_request:
     paths:
     - 'packages/**'
