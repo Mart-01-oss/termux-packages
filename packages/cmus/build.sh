@@ -20,7 +20,7 @@ termux_step_pre_configure() {
 		git apply "${TERMUX_PKG_TMPDIR}/${sha}.patch"
 	done
 
-	# we need to be able to link against aaudio even on older api levels (it will fall back properly at runtime)
+	# We need to be able to link against aaudio even on older api levels (it will fall back properly at runtime).
 	if [[ $TERMUX_PKG_API_LEVEL -lt 26 ]]; then
 		local _libdir="$TERMUX_PKG_TMPDIR/libaaudio"
 		rm -rf "${_libdir}"
@@ -41,8 +41,15 @@ termux_step_configure() {
 }
 
 termux_step_post_massage() {
-	# it's weakly linked and we do funny stuff with it, so ensure it actually got linked properly
-	if ! $READELF --needed-libs lib/cmus/op/aaudio.so | grep -E '^\s*libaaudio.so$' -q; then
-		termux_error_exit "DT_NEEDED for aaudio is not correctly set"
+	# op/aaudio.so is optional (CONFIG_AAUDIO=auto in cmus' configure).
+	# If configure disables it (e.g. toolchain/headers don't support the API checks),
+	# the file won't exist and we should not fail the build here.
+	if [ -e lib/cmus/op/aaudio.so ]; then
+		# It's weakly linked and we do funny stuff with it, so ensure it actually got linked properly.
+		if ! $READELF --needed-libs lib/cmus/op/aaudio.so | grep -Eq '^\s*libaaudio\.so$'; then
+			termux_error_exit "DT_NEEDED for aaudio is not correctly set"
+		fi
+	else
+		echo "INFO: lib/cmus/op/aaudio.so not built; skipping aaudio DT_NEEDED check"
 	fi
 }

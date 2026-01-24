@@ -2,8 +2,10 @@ TERMUX_PKG_HOMEPAGE=https://github.com/MaskRay/ccls
 TERMUX_PKG_DESCRIPTION="C/C++/ObjC language server"
 TERMUX_PKG_LICENSE="Apache-2.0"
 TERMUX_PKG_MAINTAINER="@termux"
-_COMMIT=3799e389205cdc85a0dad9a84723e1befa81cbab
-_COMMIT_DATE=2025.05.11
+# NOTE: Upstream history was rewritten and older pinned commits may disappear.
+# Keep this pinned to a commit that is still reachable (preferably one referenced by a tag).
+_COMMIT=344e2e6557dbb5e13c7d9f7b8ba6180c0d7491c4
+_COMMIT_DATE=2025.08.15
 TERMUX_PKG_VERSION=0.${_COMMIT_DATE//./}
 TERMUX_PKG_SRCURL=git+https://github.com/MaskRay/ccls.git
 TERMUX_PKG_GIT_BRANCH=master

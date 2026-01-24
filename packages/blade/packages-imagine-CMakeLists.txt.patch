@@ -1,0 +1,28 @@
+--- a/packages/imagine/CMakeLists.txt
++++ b/packages/imagine/CMakeLists.txt
+@@ -20,13 +20,20 @@
+ add_library(imagine SHARED imagine.c)
+ target_link_libraries(imagine libblade)
+ add_dependencies(imagine blade)
+ 
+-find_package(PkgConfig)
+-pkg_check_modules(LIBGD REQUIRED IMPORTED_TARGET gdlib)
+-find_path(GD_INCLUDE_DIR gd.h)
+-target_include_directories(imagine PRIVATE ${GD_INCLUDE_DIR})
+-target_link_libraries(imagine PkgConfig::LIBGD)
++# Do not use FindPkgConfig for libgd on Android/Termux builds.
++# In some CI environments pkg-config sysroot handling can produce invalid
++# duplicated include directories like:
++#   $TERMUX_PREFIX$TERMUX_PREFIX/include
++# which makes CMake fail during generation.
++find_path(GD_INCLUDE_DIR NAMES gd.h)
++find_library(GD_LIBRARY NAMES gd)
++if(NOT GD_INCLUDE_DIR OR NOT GD_LIBRARY)
++  message(FATAL_ERROR "Could not find libgd (gd.h / libgd)")
++endif()
++target_include_directories(imagine PRIVATE ${GD_INCLUDE_DIR})
++target_link_libraries(imagine ${GD_LIBRARY})
+ 
+ if(${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+ endif()

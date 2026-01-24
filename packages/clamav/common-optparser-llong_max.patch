@@ -1,0 +1,19 @@
+--- a/common/optparser.c
++++ b/common/optparser.c
+@@ -38,6 +38,14 @@
+ #ifdef HAVE_STRINGS_H
+ #include <strings.h>
+ #endif
+ #include <ctype.h>
++#include <limits.h>
++
++/* When building with -std=gnu90, some toolchains may not provide LLONG_MAX
++ * even though 'long long' exists as an extension. */
++#ifndef LLONG_MAX
++#define LLONG_MAX __LONG_LONG_MAX__
++#endif
+ 
+ // libclamav
+ #include "clamav.h"
+ #include "regex/regex.h"
+ #include "default.h"
