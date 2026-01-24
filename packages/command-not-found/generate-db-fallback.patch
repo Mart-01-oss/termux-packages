@@ -1,0 +1,37 @@
+--- a/generate-db.js	2026-01-24 09:46:44.045762530 +0800
++++ b/generate-db.js	2026-01-24 09:46:44.105762530 +0800
+@@ -139,12 +139,25 @@
+ }
+ 
+ async function processRepo(repo, repoPath, arch) {
++  // command-not-found.cpp expects specific header names for the main repo.
++  // In some forks (or custom repo.json), the main repo may be renamed.
++  // Keep generating the expected header name for the main repo key.
++  const headerRepoName = repoPath === "packages" ? "termux-main" : repo.name;
++  const headerFile = `commands-${arch}-${headerRepoName}.h`;
++
+   // Fetch the Contents.gz file for the given architecture from the apt mirror
+   const url = `${repo.url}/dists/${repo.distribution}/Contents-${arch}.gz`;
+   const response = await fetch(url);
+ 
+   if (!response.ok) {
+-    throw new Error(`${url} returned ${response.status}`);
++    // Some apt repositories do not publish Contents files.
++    // Without Contents-<arch>.gz we cannot build a full command database.
++    // Instead of failing the build, generate an empty header so compilation
++    // can proceed (command-not-found will simply not suggest packages from
++    // that repository).
++    console.error(`WARN: ${url} returned ${response.status}; generating empty ${headerFile}`);
++    await writeFile(headerFile, "");
++    return;
+   }
+ 
+   // Since we are using a gzip file, we need to decompress it
+@@ -246,7 +259,6 @@
+     });
+   }
+ 
+-  const headerFile = `commands-${arch}-${repo.name}.h`;
+   const header = Array.from(binMap.keys())
+     .sort()
+     .map((packageName) => {
