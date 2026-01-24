@@ -166,58 +166,6 @@ jobs:
               fi
             done
           '
-
-      - name: Debug dpkg failure (reproduce dpkg configure + inspect md5/libmd)
-        run: |
-          set -euo pipefail
-          ./scripts/run-docker.sh bash -lc '
-            set -euo pipefail
-            cd "$HOME/termux-packages"
-
-            # Match NeonIDE build behavior.
-            export TERMUX_REPO_APP__PACKAGE_NAME="com.neonide.studio"
-            export TERMUX_USE_OFFICIAL_REPO_FALLBACK="false"
-            export TERMUX_ALLOW_UNVERIFIED_REPOS="true"
-
-            . ./scripts/properties.sh
-
-            echo "=== Termux app package / repo / prefix ==="
-            echo "TERMUX_APP_PACKAGE=${TERMUX_APP_PACKAGE:-}"
-            echo "TERMUX_REPO_APP__PACKAGE_NAME=${TERMUX_REPO_APP__PACKAGE_NAME:-}"
-            echo "TERMUX_PREFIX=${TERMUX_PREFIX:-}"
-            echo "TERMUX_REPO__PREFIX=${TERMUX_REPO__PREFIX:-}"
-
-            echo "=== STEP 0: Show whether md5.h exists under TERMUX_PREFIX ==="
-            ls -la "${TERMUX_PREFIX}/include/md5.h" 2>/dev/null || true
-            ls -la "${TERMUX_PREFIX}/include" 2>/dev/null | grep -E "md5\.h|sha1\.h|sha2\.h" || true
-
-            echo "=== STEP 1: Force/build dpkg with -i (to reproduce CI behavior) ==="
-            set +e
-            ./build-package.sh -i -a aarch64 dpkg
-            rc=$?
-            set -e
-            echo "dpkg build exit code: $rc"
-
-            echo "=== STEP 2: If dpkg failed, dump key logs (configure/config.log) ==="
-            builddir="$HOME/.termux-build/dpkg/build"
-            if [ -f "$builddir/config.log" ]; then
-              echo "--- $builddir/config.log (tail 250) ---"
-              tail -n 250 "$builddir/config.log" || true
-              echo "--- config.log md5-related lines ---"
-              grep -nE "md5|digest|libmd" "$builddir/config.log" | tail -n 200 || true
-            else
-              echo "No config.log found at $builddir/config.log"
-            fi
-
-            echo "=== STEP 3: Show downloaded dependency guards (if any) ==="
-            # build-package.sh / termux_download_deb_pac.sh will print these when guarding downloads.
-            # Keep a simple grep over the build output directory if it exists.
-            find "$HOME/.termux-build" -maxdepth 3 -type f -name "*.log" 2>/dev/null | head -n 20 || true
-
-            echo "=== STEP 4: Print dpkg recipe deps (sanity) ==="
-            sed -n "1,80p" packages/dpkg/build.sh || true
-          '
-
       - name: Debug build selected packages (live logs)
         if: ${{ github.event.inputs.packages != '' }}
         env:
