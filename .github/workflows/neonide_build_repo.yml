@@ -321,6 +321,7 @@ jobs:
             # from the repo (common on fresh repos / after partial publishes), retry without -i
             # so dependencies can be built from source instead of downloaded.
             set +e
+            set -o pipefail
             ./scripts/run-docker.sh env \
               TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" \
               BUILD_CC="$HOST_LLVM_BASE_DIR_IN_CONTAINER/bin/clang" \
@@ -328,8 +329,8 @@ jobs:
               TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
               TERMUX_ALLOW_REVISION_MISMATCH="true" \
               TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
-              ./build-package.sh -i -a aarch64 "$pkg" >>"$log_path" 2>&1
-            rc=$?
+              ./build-package.sh -i -a aarch64 "$pkg" 2>&1 | tee -a "$log_path"
+            rc=${PIPESTATUS[0]}
 
             if [ $rc -ne 0 ]; then
               echo "[!] Build with -i failed for $pkg (rc=$rc). Retrying without -i..." | tee -a "$log_path" >&2
@@ -340,9 +341,10 @@ jobs:
                 TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
                 TERMUX_ALLOW_REVISION_MISMATCH="true" \
                 TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
-                ./build-package.sh -a aarch64 "$pkg" >>"$log_path" 2>&1
-              rc=$?
+                ./build-package.sh -a aarch64 "$pkg" 2>&1 | tee -a "$log_path"
+              rc=${PIPESTATUS[0]}
             fi
+            set +o pipefail
             set -e
 
             if [ $rc -ne 0 ]; then
