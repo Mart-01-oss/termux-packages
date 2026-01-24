@@ -13,15 +13,6 @@ on:
     - 'x11-packages/**'
   workflow_dispatch:
     inputs:
-      packages:
-        description: "Optional: whitespace/newline-separated list of packages to build (overrides automatic selection)."
-        required: false
-        default: ""
-      keep_logs:
-        description: "When 'packages' override is used, keep per-package logs even on success."
-        required: false
-        type: boolean
-        default: true
       batch_size:
         description: "Max number of source packages to build per run (total across all shards)"
         required: false
@@ -153,7 +144,6 @@ jobs:
           SHARD='${{ matrix.shard }}'
           BATCH_SIZE='${{ inputs.batch_size }}'
           FORCE_REBUILD='${{ inputs.force_rebuild && 'true' || 'false' }}'
-          PACKAGES_OVERRIDE='${{ inputs.packages }}'
 
           [ -z "$SHARDS" ] && SHARDS=16
           [ -z "$BATCH_SIZE" ] && BATCH_SIZE=80
@@ -164,37 +154,6 @@ jobs:
           fi
 
           PAGES_PACKAGES="pages-repo/dists/stable/main/binary-aarch64/Packages"
-
-          # If user provided an explicit package list (debug), skip the auto-selection logic.
-          # This is useful when a specific package appears to "hang" (no console output) and
-          # you want to isolate it to a single shard.
-          if [ -n "${PACKAGES_OVERRIDE//[[:space:]]/}" ]; then
-            out="shard-packages.txt"
-            : > "$out"
-
-            # Normalize whitespace/newlines to one-per-line.
-            mapfile -t requested < <(printf '%s\n' "$PACKAGES_OVERRIDE" | tr ' \t' '\n' | sed '/^$/d')
-
-            idx=0
-            for p in "${requested[@]}"; do
-              if (( idx % SHARDS == SHARD )); then
-                echo "$p" >> "$out"
-              fi
-              idx=$((idx+1))
-            done
-
-            count="$(wc -l < "$out" | tr -d ' ')"
-            echo "count=$count" >> "$GITHUB_OUTPUT"
-            if [ "$count" -eq 0 ]; then
-              echo "No packages selected for shard $SHARD/$SHARDS from override list."
-              echo "has_packages=false" >> "$GITHUB_OUTPUT"
-            else
-              echo "Selected $count override package(s) for shard $SHARD/$SHARDS:"
-              sed -n '1,200p' "$out"
-              echo "has_packages=true" >> "$GITHUB_OUTPUT"
-            fi
-            exit 0
-          fi
 
           # Load exclude list (bootstrap/core packages) into a set
           declare -A EXCLUDE=()
@@ -361,10 +320,7 @@ jobs:
             # First try with -i (download deps from NeonIDE repo). If a dependency is missing
             # from the repo (common on fresh repos / after partial publishes), retry without -i
             # so dependencies can be built from source instead of downloaded.
-            #
-            # IMPORTANT: stream output to Actions log so the job doesn't look "stuck".
             set +e
-            set -o pipefail
             ./scripts/run-docker.sh env \
               TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" \
               BUILD_CC="$HOST_LLVM_BASE_DIR_IN_CONTAINER/bin/clang" \
@@ -372,8 +328,8 @@ jobs:
               TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
               TERMUX_ALLOW_REVISION_MISMATCH="true" \
               TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
-              ./build-package.sh -i -a aarch64 "$pkg" 2>&1 | tee -a "$log_path"
-            rc=${PIPESTATUS[0]}
+              ./build-package.sh -i -a aarch64 "$pkg" >>"$log_path" 2>&1
+            rc=$?
 
             if [ $rc -ne 0 ]; then
               echo "[!] Build with -i failed for $pkg (rc=$rc). Retrying without -i..." | tee -a "$log_path" >&2
@@ -384,10 +340,9 @@ jobs:
                 TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
                 TERMUX_ALLOW_REVISION_MISMATCH="true" \
                 TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
-                ./build-package.sh -a aarch64 "$pkg" 2>&1 | tee -a "$log_path"
-              rc=${PIPESTATUS[0]}
+                ./build-package.sh -a aarch64 "$pkg" >>"$log_path" 2>&1
+              rc=$?
             fi
-            set +o pipefail
             set -e
 
             if [ $rc -ne 0 ]; then
@@ -397,10 +352,8 @@ jobs:
               continue
             fi
 
-            # Build succeeded: remove log to keep artifacts small, unless this is a debug run.
-            if [ -z "${{ inputs.packages }}" ] || [ "${{ inputs.keep_logs && 'true' || 'false' }}" != "true" ]; then
-              rm -f "$log_path" || true
-            fi
+            # Build succeeded: remove log to keep artifacts small.
+            rm -f "$log_path" || true
 
             shopt -s nullglob
             for deb in output/*.deb; do
@@ -432,8 +385,8 @@ jobs:
           path: prebuilt-debs/*.deb
           if-no-files-found: ignore
 
-      - name: Upload build logs (per shard)
-        if: ${{ always() && steps.select.outputs.has_packages == 'true' && (steps.build_shard.outputs.shard_failed == '1' || inputs.packages != '') }}
+      - name: Upload build logs (per shard, failures only)
+        if: ${{ always() && steps.select.outputs.has_packages == 'true' && steps.build_shard.outputs.shard_failed == '1' }}
         uses: actions/upload-artifact@v4
         with:
           name: build-logs-shard-${{ matrix.shard }}

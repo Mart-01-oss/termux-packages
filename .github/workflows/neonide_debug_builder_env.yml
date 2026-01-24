@@ -2,6 +2,25 @@ name: NeonIDE - Debug docker builder env
 
 on:
   workflow_dispatch:
+    inputs:
+      packages:
+        description: "Optional: whitespace/newline-separated packages to build inside the builder (useful to debug stuck builds)."
+        required: false
+        default: ""
+      arch:
+        description: "Target architecture"
+        required: false
+        default: "aarch64"
+      use_i_flag:
+        description: "Try build-package.sh with -i first (download deps), then retry without -i on failure."
+        required: false
+        type: boolean
+        default: true
+      keep_logs:
+        description: "Keep logs even on success (recommended for debugging)."
+        required: false
+        type: boolean
+        default: true
 
 permissions: {}
 
@@ -198,6 +217,79 @@ jobs:
             echo "=== STEP 4: Print dpkg recipe deps (sanity) ==="
             sed -n "1,80p" packages/dpkg/build.sh || true
           '
+
+      - name: Debug build selected packages (live logs)
+        if: ${{ github.event.inputs.packages != '' }}
+        env:
+          TERMUX_DOCKER__HOST_TERMUX_TOPDIR: /mnt/termux-topdir
+          TARGET_ARCH: ${{ github.event.inputs.arch }}
+          USE_I_FLAG: ${{ github.event.inputs.use_i_flag }}
+          KEEP_LOGS: ${{ github.event.inputs.keep_logs }}
+          PACKAGES: ${{ github.event.inputs.packages }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p logs output
+
+          # Normalize whitespace/newlines to one package per line.
+          mapfile -t pkgs < <(printf '%s\n' "$PACKAGES" | tr ' \t' '\n' | sed '/^$/d')
+
+          echo "Selected packages: ${pkgs[*]}"
+
+          for pkg in "${pkgs[@]}"; do
+            echo "============================================================"
+            echo "[*] Debug building $pkg (arch=$TARGET_ARCH)"
+            echo "============================================================"
+
+            log_path="logs/${pkg}.log"
+            : > "$log_path"
+
+            set +e
+            set -o pipefail
+
+            if [ "$USE_I_FLAG" = "true" ]; then
+              ./scripts/run-docker.sh env \
+                TERMUX_REPO_APP__PACKAGE_NAME="com.neonide.studio" \
+                TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
+                TERMUX_ALLOW_REVISION_MISMATCH="true" \
+                TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
+                ./build-package.sh -i -a "$TARGET_ARCH" "$pkg" 2>&1 | tee -a "$log_path"
+              rc=${PIPESTATUS[0]}
+            else
+              rc=1
+            fi
+
+            if [ ${rc:-1} -ne 0 ]; then
+              echo "[!] Build with -i failed (or skipped) for $pkg; retrying without -i" | tee -a "$log_path" >&2
+              ./scripts/run-docker.sh env \
+                TERMUX_REPO_APP__PACKAGE_NAME="com.neonide.studio" \
+                TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
+                TERMUX_ALLOW_REVISION_MISMATCH="true" \
+                TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
+                ./build-package.sh -a "$TARGET_ARCH" "$pkg" 2>&1 | tee -a "$log_path"
+              rc=${PIPESTATUS[0]}
+            fi
+
+            set +o pipefail
+            set -e
+
+            if [ $rc -ne 0 ]; then
+              echo "::error ::FAILED $pkg (rc=$rc)"
+            else
+              echo "[*] OK $pkg"
+              if [ "$KEEP_LOGS" != "true" ]; then
+                rm -f "$log_path" || true
+              fi
+            fi
+          done
+
+      - name: Upload debug build logs
+        if: ${{ always() && github.event.inputs.packages != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-build-logs
+          path: logs
+          if-no-files-found: warn
 
       - name: Docker cleanup (always)
         if: always()
