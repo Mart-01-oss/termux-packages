@@ -1,0 +1,17 @@
+--- a/src/source-build-externals/src/azure-activedirectory-identitymodel-extensions-for-dotnet/build/common.props
++++ b/src/source-build-externals/src/azure-activedirectory-identitymodel-extensions-for-dotnet/build/common.props
+@@ -41,6 +41,11 @@
+   <PropertyGroup>
+     <NoWarn>$(NoWarn);SYSLIB0050</NoWarn>
+     <NoWarn>$(NoWarn);SYSLIB0051</NoWarn>
++
++    <!--
++      Source-build may generate Assembly(File)Version values that exceed the 16-bit Windows
++      version component limit (65534), which triggers CS7035. We don't rely on Windows file
++      version semantics in Termux/Android builds, so suppress the warning.
++    -->
++    <NoWarn>$(NoWarn);7035</NoWarn>
++    <WarningsNotAsErrors>$(WarningsNotAsErrors);7035</WarningsNotAsErrors>
+   </PropertyGroup>
+ 
+   <ItemGroup Condition="'$(TargetFramework)' != 'net8.0'">

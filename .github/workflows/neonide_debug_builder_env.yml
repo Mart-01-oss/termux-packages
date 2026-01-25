@@ -209,6 +209,11 @@ jobs:
 
             if [ ${rc:-1} -ne 0 ]; then
               echo "[!] Build with -i failed (or skipped) for $pkg; retrying without -i" | tee -a "$log_path" >&2
+
+              # Restart the long-lived builder container before retrying to avoid hitting
+              # the global build lock ("Another build is already running within same environment").
+              docker rm -f termux-package-builder >/dev/null 2>&1 || true
+
               ./scripts/run-docker.sh env \
                 TERMUX_REPO_APP__PACKAGE_NAME="com.neonide.studio" \
                 TERMUX_ALLOW_UNVERIFIED_REPOS="true" \

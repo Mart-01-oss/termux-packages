@@ -334,6 +334,13 @@ jobs:
 
             if [ $rc -ne 0 ]; then
               echo "[!] Build with -i failed for $pkg (rc=$rc). Retrying without -i..." | tee -a "$log_path" >&2
+
+              # The Termux docker builder reuses a single long-lived container (termux-package-builder).
+              # If the previous build was interrupted or left processes behind, the next invocation may
+              # hit the global build lock ("Another build is already running within same environment").
+              # Restart the container before retrying to ensure a clean environment.
+              docker rm -f termux-package-builder >/dev/null 2>&1 || true
+
               ./scripts/run-docker.sh env \
                 TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" \
                 BUILD_CC="$HOST_LLVM_BASE_DIR_IN_CONTAINER/bin/clang" \
