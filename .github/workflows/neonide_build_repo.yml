@@ -344,24 +344,7 @@ jobs:
               TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
               HOME="/home/builder" \
               PKG="$pkg" \
-              bash -lc 'set -euo pipefail;
-                # Find repo root inside container (volume mount path may vary).
-                repo="";
-                for d in "$HOME/termux-packages" /home/builder/termux-packages /home/builder/termux-packages/termux-packages /workspace /workspaces/termux-packages; do
-                  if [ -f "$d/build-package.sh" ]; then repo="$d"; break; fi
-                done
-                if [ -z "$repo" ]; then
-                  echo "ERROR: Could not locate repo root in container." >&2
-                  echo "PWD=$(pwd)" >&2
-                  echo "HOME=$HOME" >&2
-                  ls -la /home || true
-                  ls -la /home/builder || true
-                  exit 1
-                fi
-                cd "$repo";
-                . ./scripts/properties.sh;
-                if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi;
-                exec ./build-package.sh -i -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
+              bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; exec ./build-package.sh -i -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
             rc=${PIPESTATUS[0]}
 
             if [ $rc -ne 0 ]; then
@@ -384,24 +367,7 @@ jobs:
                 TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
                 HOME="/home/builder" \
                 PKG="$pkg" \
-                bash -lc 'set -euo pipefail;
-                  # Find repo root inside container (volume mount path may vary).
-                  repo="";
-                  for d in "$HOME/termux-packages" /home/builder/termux-packages /home/builder/termux-packages/termux-packages /workspace /workspaces/termux-packages; do
-                    if [ -f "$d/build-package.sh" ]; then repo="$d"; break; fi
-                  done
-                  if [ -z "$repo" ]; then
-                    echo "ERROR: Could not locate repo root in container." >&2
-                    echo "PWD=$(pwd)" >&2
-                    echo "HOME=$HOME" >&2
-                    ls -la /home || true
-                    ls -la /home/builder || true
-                    exit 1
-                  fi
-                  cd "$repo";
-                  . ./scripts/properties.sh;
-                  if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi;
-                  exec ./build-package.sh -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
+                bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; exec ./build-package.sh -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
               rc=${PIPESTATUS[0]}
             fi
             set +o pipefail

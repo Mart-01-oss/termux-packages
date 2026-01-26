@@ -39,6 +39,11 @@ if [ "$UNAME" = Darwin ]; then
 	SEC_OPT=""
 else
 	REPOROOT="$(dirname $(readlink -f $0))/../"
+	# On GitHub Actions, prefer the workspace path as the repo root to avoid issues
+	# with symlinks / unexpected script locations affecting volume mounts.
+	if [ -n "${GITHUB_WORKSPACE-}" ] && [ -d "${GITHUB_WORKSPACE}" ]; then
+		REPOROOT="${GITHUB_WORKSPACE}"
+	fi
 	SEC_OPT=" --security-opt seccomp=$REPOROOT/scripts/profile.json"
 fi
 
