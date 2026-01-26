@@ -535,26 +535,27 @@ jobs:
         if: ${{ steps.debs.outputs.has_large == 'true' }}
         id: rel
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Use the pages PAT since the release lives in Mart-01-oss/pages
+          GH_TOKEN: ${{ secrets.PAGES_PAT }}
         run: |
           set -euo pipefail
-          tag="Packages"
+          tag="Package"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           # Create the tag release if it doesn't exist. If it exists, keep it.
-          if gh release view "$tag" >/dev/null 2>&1; then
+          if gh release view "$tag" --repo "Mart-01-oss/pages" >/dev/null 2>&1; then
             echo "[*] Release '$tag' already exists"
           else
             echo "[*] Creating release '$tag'"
-            gh release create "$tag" --title "Packages" --notes "Large .deb assets for NeonIDE APT repo." --latest=false
+            gh release create "$tag" --repo "Mart-01-oss/pages" --title "$tag" --notes "Large .deb assets for NeonIDE APT repo." --latest=false
           fi
 
-      - name: Upload large debs to GitHub Release (Packages)
+      - name: Upload large debs to GitHub Release (Package)
         if: ${{ steps.debs.outputs.has_large == 'true' }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAGES_PAT }}
         run: |
           set -euo pipefail
-          tag="Packages"
+          tag="Package"
           shopt -s nullglob
           files=(prebuilt-debs-large/*.deb)
           if [ "${#files[@]}" -eq 0 ]; then
@@ -564,7 +565,7 @@ jobs:
 
           # Skip upload for assets that already exist with same name and size.
           assets_json="$(gh api -H 'Accept: application/vnd.github+json' \
-            "/repos/${GITHUB_REPOSITORY}/releases/tags/${tag}")"
+            "/repos/Mart-01-oss/pages/releases/tags/${tag}")"
 
           for f in "${files[@]}"; do
             name="$(basename "$f")"
@@ -575,7 +576,7 @@ jobs:
               continue
             fi
             echo "[+] Uploading release asset: $name ($size bytes)"
-            gh release upload "$tag" "$f" --clobber
+            gh release upload "$tag" "$f" --repo "Mart-01-oss/pages" --clobber
           done
 
       - name: Publish debs into pages APT repo (store small in pages, reference large via release)
@@ -591,7 +592,8 @@ jobs:
           NEONIDE_LARGE_DEB_PUBLISH_MODE: release
           NEONIDE_LARGE_DEB_THRESHOLD_MB: "99"
           # Always reference the canonical repo/tag for large assets
-          NEONIDE_LARGE_DEB_RELEASE_BASE_URL: "https://github.com/Mart-01-oss/termux-packages/releases/download/Packages"
+          # NOTE: base URL must be a /releases/download/<tag> URL so apt can fetch the actual file.
+          NEONIDE_LARGE_DEB_RELEASE_BASE_URL: "https://github.com/Mart-01-oss/pages/releases/download/Package"
           NEONIDE_GPG_KEY_ID: ${{ secrets.NEONIDE_GPG_KEY_ID }}
           NEONIDE_GPG_PASSPHRASE: ${{ secrets.NEONIDE_GPG_PASSPHRASE }}
         run: |

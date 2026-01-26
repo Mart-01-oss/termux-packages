@@ -22,12 +22,14 @@ set -euo pipefail
 #   NEONIDE_LARGE_DEB_PUBLISH_MODE
 #     - pages   (default): publish debs into pages repo pool/ as usual
 #     - release: do NOT store large debs in pages repo; instead reference them by URL
-#                in Packages, and keep their package stanzas in Packages.external
-#                so they remain in the repo across runs.
+#                directly in Packages (and Packages.gz). To keep large packages
+#                available across runs, this script extracts previously-published
+#                URL-based stanzas from the existing Packages file and merges them
+#                back when regenerating Packages.
 #   NEONIDE_LARGE_DEB_THRESHOLD_MB   (default: 99) size threshold in MiB
 #   NEONIDE_LARGE_DEB_RELEASE_BASE_URL
 #     Base URL for release assets, e.g.
-#       https://github.com/<owner>/<repo>/releases/download/Packages
+#       https://github.com/<owner>/<repo>/releases/download/<tag>
 #     The deb filename will be appended (e.g. .../cmake_1.2.3_aarch64.deb).
 #
 # Packages Filename formatting:
@@ -90,7 +92,7 @@ is_large_deb() {
   [[ "$bytes" -ge "$thresh_bytes" ]]
 }
 
-# Remove any existing stanza for a binary package from Packages.external.
+# Remove any existing stanza for a binary package from a Packages-like file.
 # We keep only one stanza per Package: to avoid accumulating old versions.
 remove_pkg_stanza() {
   local pkg="$1" file="$2"
@@ -220,8 +222,41 @@ external_added=0
 
 PACKAGES_DIR_REL="dists/${APT_DIST}/${APT_COMPONENT}/binary-${APT_ARCH}"
 PACKAGES_PATH="$PAGES_REPO_DIR/${PACKAGES_DIR_REL}/Packages"
-PACKAGES_EXTERNAL_PATH="$PAGES_REPO_DIR/${PACKAGES_DIR_REL}/Packages.external"
 mkdir -p "$PAGES_REPO_DIR/${PACKAGES_DIR_REL}"
+
+# NOTE:
+# We intentionally do NOT use a separate Packages.external file.
+# APT will only ever read Packages (and Packages.gz), so we keep all stanzas there.
+# For "release-hosted" large debs, we preserve their stanzas by extracting them from
+# the previous Packages file and merging them back on each run.
+EXISTING_RELEASE_STANZAS_FILE="$(mktemp)"
+NEW_RELEASE_STANZAS_FILE="$(mktemp)"
+: > "$EXISTING_RELEASE_STANZAS_FILE"
+: > "$NEW_RELEASE_STANZAS_FILE"
+
+extract_release_hosted_stanzas() {
+  local packages_file="$1"
+  local out_file="$2"
+  : > "$out_file"
+  [[ -f "$packages_file" ]] || return 0
+
+  # Extract only paragraph stanzas whose Filename is an absolute URL.
+  # (We specifically use this for large debs hosted outside the Pages git repo.)
+  awk 'BEGIN{RS=""; ORS="\n\n"; FS="\n"}
+    {
+      keep=0
+      for(i=1;i<=NF;i++){
+        if($i ~ /^Filename: https?:\/\//){ keep=1; break }
+      }
+      if(keep){ print $0 }
+    }' "$packages_file" >> "$out_file"
+}
+
+# Seed EXISTING_RELEASE_STANZAS_FILE from the currently published Packages file (if any).
+extract_release_hosted_stanzas "$PACKAGES_PATH" "$EXISTING_RELEASE_STANZAS_FILE"
+
+# If an older workflow run created Packages.external, delete it to avoid confusing tooling/users.
+rm -f "$PAGES_REPO_DIR/${PACKAGES_DIR_REL}/Packages.external" 2>/dev/null || true
 
 if [[ "$NEONIDE_LARGE_DEB_PUBLISH_MODE" == "release" && -z "$NEONIDE_LARGE_DEB_RELEASE_BASE_URL" ]]; then
   echo "ERROR: NEONIDE_LARGE_DEB_PUBLISH_MODE=release requires NEONIDE_LARGE_DEB_RELEASE_BASE_URL" >&2
@@ -280,7 +315,7 @@ for deb in "$DEBS_DIR"/*.deb; do
     : # (informational only)
   fi
 
-  # Large deb handling: keep deb out of pages repo, but keep its stanza in Packages.external
+  # Large deb handling: keep deb out of pages repo, but keep its stanza in Packages
   # and set Filename to the GitHub Release asset URL.
   if [[ "$NEONIDE_LARGE_DEB_PUBLISH_MODE" == "release" ]] && is_large_deb "$deb"; then
     echo "[*] Large deb detected (>=${NEONIDE_LARGE_DEB_THRESHOLD_MB}MiB): $(basename "$deb")"
@@ -293,38 +328,36 @@ for deb in "$DEBS_DIR"/*.deb; do
     release_url="${NEONIDE_LARGE_DEB_RELEASE_BASE_URL%/}/$(basename "$deb")"
     stanza="$(sed -E "s|^Filename: .*|Filename: ${release_url}|" <<<"$stanza")"
 
-    # If an existing stanza already matches (same Filename + SHA256), skip updating.
-    if [[ -f "$PACKAGES_EXTERNAL_PATH" ]]; then
-      want_sha="$(awk -F': ' '$1=="SHA256"{print $2; exit}' <<<"$stanza")"
-      want_fn="$(awk -F': ' '$1=="Filename"{print $2; exit}' <<<"$stanza")"
-      if awk -v pkg="$pkg" -v sha="$want_sha" -v fn="$want_fn" 'BEGIN{RS="";FS="\n"}
-          {
-            p=""; s=""; f="";
-            for(i=1;i<=NF;i++){
-              if($i=="Package: "pkg){p=1}
-              else if($i=="SHA256: "sha){s=1}
-              else if($i=="Filename: "fn){f=1}
-            }
-            if(p && s && f){found=1}
+    # If an existing release-hosted stanza already matches (same Filename + SHA256), skip updating.
+    want_sha="$(awk -F': ' '$1=="SHA256"{print $2; exit}' <<<"$stanza")"
+    want_fn="$(awk -F': ' '$1=="Filename"{print $2; exit}' <<<"$stanza")"
+    if awk -v pkg="$pkg" -v sha="$want_sha" -v fn="$want_fn" 'BEGIN{RS="";FS="\n"}
+        {
+          p=""; s=""; f="";
+          for(i=1;i<=NF;i++){
+            if($i=="Package: "pkg){p=1}
+            else if($i=="SHA256: "sha){s=1}
+            else if($i=="Filename: "fn){f=1}
           }
-          END{exit(found?0:1)}' "$PACKAGES_EXTERNAL_PATH"; then
-        echo "[=] External stanza already up-to-date for $pkg"
-        continue
-      fi
+          if(p && s && f){found=1}
+        }
+        END{exit(found?0:1)}' "$EXISTING_RELEASE_STANZAS_FILE"; then
+      echo "[=] Release-hosted stanza already up-to-date for $pkg"
+      continue
     fi
 
-    # Update Packages.external (remove old stanza for this Package: then append).
-    remove_pkg_stanza "$pkg" "$PACKAGES_EXTERNAL_PATH"
+    # Remove old stanza for this Package from existing release-hosted set (if present)
+    # and append the updated stanza to the new set.
+    remove_pkg_stanza "$pkg" "$EXISTING_RELEASE_STANZAS_FILE"
     {
-      # Ensure file ends with a blank line between stanzas.
-      if [[ -s "$PACKAGES_EXTERNAL_PATH" ]]; then
+      if [[ -s "$NEW_RELEASE_STANZAS_FILE" ]]; then
         printf '\n'
       fi
       printf '%s\n' "$stanza" | sed -e '${/^$/d;}'
       printf '\n'
-    } >> "$PACKAGES_EXTERNAL_PATH"
+    } >> "$NEW_RELEASE_STANZAS_FILE"
 
-    echo "[+] Added/updated external package stanza for $pkg -> $release_url"
+    echo "[+] Added/updated release-hosted package stanza for $pkg -> $release_url"
     external_added=1
     continue
   fi
@@ -364,7 +397,7 @@ if [[ $copied -ne 1 ]]; then
   echo "WARN: No .deb files were published from $DEBS_DIR" >&2
 fi
 
-echo "[*] Regenerating Packages and Packages.gz from pool (+ Packages.external if present)..."
+echo "[*] Regenerating Packages and Packages.gz from pool (+ release-hosted URL stanzas if present)..."
 (
   cd "$PAGES_REPO_DIR"
   mkdir -p "$PACKAGES_DIR_REL"
@@ -372,17 +405,21 @@ echo "[*] Regenerating Packages and Packages.gz from pool (+ Packages.external i
   tmp_packages="${PACKAGES_DIR_REL}/Packages.tmp"
   dpkg-scanpackages -m pool /dev/null > "$tmp_packages"
 
-  # Merge in externally-hosted package stanzas (large debs stored in GitHub Releases).
-  if [[ -s "$PACKAGES_DIR_REL/Packages.external" ]]; then
+  # Merge in release-hosted package stanzas (large debs stored in GitHub Releases).
+  #
+  # - EXISTING_RELEASE_STANZAS_FILE contains stanzas extracted from the *previous* Packages file.
+  #   We keep these so large packages remain installable even if they were not part of this run.
+  # - NEW_RELEASE_STANZAS_FILE contains stanzas for large debs from this run.
+  if [[ -s "$EXISTING_RELEASE_STANZAS_FILE" || -s "$NEW_RELEASE_STANZAS_FILE" ]]; then
     printf '\n' >> "$tmp_packages"
-    cat "$PACKAGES_DIR_REL/Packages.external" >> "$tmp_packages"
+    [[ -s "$EXISTING_RELEASE_STANZAS_FILE" ]] && cat "$EXISTING_RELEASE_STANZAS_FILE" >> "$tmp_packages"
+    [[ -s "$NEW_RELEASE_STANZAS_FILE" ]] && cat "$NEW_RELEASE_STANZAS_FILE" >> "$tmp_packages"
   fi
 
   mv -f "$tmp_packages" "$PACKAGES_DIR_REL/Packages"
 
   # Ensure relative filenames have the expected ./ prefix (URLs untouched).
   normalize_packages_filenames_inplace "$PACKAGES_DIR_REL/Packages"
-  normalize_packages_filenames_inplace "$PACKAGES_DIR_REL/Packages.external"
 
   # Keep output identical to scripts/neonide-build-and-publish-pages.sh
   gzip -9 -c "$PACKAGES_DIR_REL/Packages" > "$PACKAGES_DIR_REL/Packages.gz"
