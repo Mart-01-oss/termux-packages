@@ -340,7 +340,6 @@ jobs:
               TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
               TERMUX_ALLOW_REVISION_MISMATCH="true" \
               TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
-              # Flat APT repo hosted as GitHub Release assets (large debs)
               TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
               HOME="/home/builder" \
               PKG="$pkg" \
@@ -363,7 +362,6 @@ jobs:
                 TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
                 TERMUX_ALLOW_REVISION_MISMATCH="true" \
                 TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
-                # Flat APT repo hosted as GitHub Release assets (large debs)
                 TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
                 HOME="/home/builder" \
                 PKG="$pkg" \
