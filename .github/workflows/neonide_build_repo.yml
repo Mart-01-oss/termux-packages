@@ -321,6 +321,10 @@ jobs:
         run: |
           set -euo pipefail
 
+          # Ensure Android SDK/NDK exists inside the docker builder.
+          # Some runner situations (fresh container recreation) may cause the NDK dir to be missing.
+          ./scripts/run-docker.sh bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; echo "INFO: NDK=$NDK ANDROID_HOME=$ANDROID_HOME"; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; test -d "$NDK"'
+
           shard_failed=0
           : > logs/FAILED_PACKAGES.txt
 
@@ -361,6 +365,9 @@ jobs:
               # hit the global build lock ("Another build is already running within same environment").
               # Restart the container before retrying to ensure a clean environment.
               docker rm -f termux-package-builder >/dev/null 2>&1 || true
+
+              # Re-ensure Android SDK/NDK exists after recreating the container.
+              ./scripts/run-docker.sh bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; echo "INFO: NDK=$NDK ANDROID_HOME=$ANDROID_HOME"; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; test -d "$NDK"'
 
               ./scripts/run-docker.sh env \
                 TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" \
