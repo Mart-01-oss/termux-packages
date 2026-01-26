@@ -1,0 +1,13 @@
+--- a/src/popups/remotelist.rs	2026-01-26 20:53:17.075893581 +0800
++++ b/src/popups/remotelist.rs	2026-01-26 20:53:17.191893581 +0800
+@@ -385,10 +385,6 @@
+ 				r,
+ 			);
+ 
+-			let mut r = r;
+-			r.width += 1;
+-			r.height += 2;
+-			r.y = r.y.saturating_sub(1);
+ 		}
+ 	}
+ 

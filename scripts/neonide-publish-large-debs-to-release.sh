@@ -67,19 +67,70 @@ fi
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
-# Build a flat repo index in workdir/
+newdir="$workdir/new"
+mkdir -p "$newdir"
+
+# Copy the *new* large debs into newdir/ (these will be uploaded as assets).
 for f in "${large_debs[@]}"; do
-  cp -f "$f" "$workdir/"
+  cp -f "$f" "$newdir/"
 done
 
 (
   cd "$workdir"
-  dpkg-scanpackages -m . /dev/null > Packages
-  gzip -9 -c Packages > Packages.gz
+
+  # If the release already has a Packages/Packages.gz, merge it with the new packages
+  # instead of overwriting to only the debs uploaded in this run.
+  existing_packages="$workdir/Packages.existing"
+  tmp_download="$workdir/.gh_download"
+  mkdir -p "$tmp_download"
+
+  if gh release download "$RELEASE_TAG" --repo "$RELEASE_REPO" --pattern "Packages" --dir "$tmp_download" >/dev/null 2>&1; then
+    cp -f "$tmp_download/Packages" "$existing_packages"
+  elif gh release download "$RELEASE_TAG" --repo "$RELEASE_REPO" --pattern "Packages.gz" --dir "$tmp_download" >/dev/null 2>&1; then
+    gzip -dc "$tmp_download/Packages.gz" > "$existing_packages" || true
+  else
+    : > "$existing_packages"
+  fi
+
+  # Build Packages entries for the new debs only.
+  (cd "$newdir" && dpkg-scanpackages -m . /dev/null) > "$workdir/Packages.new"
+
+  # Remove stanzas from existing Packages that would be overwritten by uploading a deb with the same filename.
+  # (Filename is typically "./<deb>" in a flat repo.)
+  ls -1 "$newdir"/*.deb 2>/dev/null | xargs -n1 basename > "$workdir/skip-filenames.txt" || true
+
+  awk -v skipfile="$workdir/skip-filenames.txt" '
+    BEGIN {
+      RS=""; FS="\n"; ORS="\n\n";
+      while ((getline < skipfile) > 0) {
+        if ($0 != "") skip[$0]=1;
+      }
+    }
+    {
+      fn="";
+      for (i=1; i<=NF; i++) {
+        if ($i ~ /^Filename: /) {
+          fn=$i;
+          sub(/^Filename: /,"",fn);
+          sub(/^\.[\/]/,"",fn);
+        }
+      }
+      if (fn != "" && (fn in skip)) next;
+      print $0;
+    }
+  ' "$existing_packages" > "$workdir/Packages.merged"
+
+  cat "$workdir/Packages.new" >> "$workdir/Packages.merged"
+
+  # Normalize trailing newlines
+  printf '\n' >> "$workdir/Packages.merged"
+
+  mv -f "$workdir/Packages.merged" "$workdir/Packages"
+  gzip -9 -c "$workdir/Packages" > "$workdir/Packages.gz"
 
   # Minimal Release file for flat repo.
   DATE_RFC2822="$(date -Ru)"
-  cat > Release <<EOF
+  cat > "$workdir/Release" <<EOF
 Origin: com.neonide.studio
 Label: com.neonide.studio
 Suite: ${RELEASE_TAG}
@@ -92,12 +143,12 @@ EOF
 
   add_section() {
     local title="$1" cmd="$2"
-    echo "${title}:" >> Release
-    for f in Release Packages Packages.gz; do
+    echo "${title}:" >> "$workdir/Release"
+    for f in Packages Packages.gz; do
       local hash size
-      hash="$($cmd "$f" | awk '{print $1}')"
-      size="$(wc -c < "$f" | tr -d ' ')"
-      printf ' %s %16s %s\n' "$hash" "$size" "$f" >> Release
+      hash="$($cmd "$workdir/$f" | awk '{print $1}')"
+      size="$(wc -c < "$workdir/$f" | tr -d ' ')"
+      printf ' %s %16s %s\n' "$hash" "$size" "$f" >> "$workdir/Release"
     done
   }
 
@@ -112,9 +163,9 @@ EOF
     if [ -n "${NEONIDE_GPG_PASSPHRASE:-}" ]; then
       gpg_args+=(--pinentry-mode loopback --passphrase "$NEONIDE_GPG_PASSPHRASE")
     fi
-    rm -f InRelease Release.gpg || true
-    gpg "${gpg_args[@]}" --clearsign -o InRelease Release
-    gpg "${gpg_args[@]}" --armor --detach-sign -o Release.gpg Release || true
+    rm -f "$workdir/InRelease" "$workdir/Release.gpg" || true
+    gpg "${gpg_args[@]}" --clearsign -o "$workdir/InRelease" "$workdir/Release"
+    gpg "${gpg_args[@]}" --armor --detach-sign -o "$workdir/Release.gpg" "$workdir/Release" || true
   else
     echo "[*] Skipping signing (NEONIDE_GPG_KEY_ID not set or gpg missing)."
   fi
@@ -125,8 +176,8 @@ assets=("$workdir/Packages" "$workdir/Packages.gz" "$workdir/Release")
 [ -f "$workdir/InRelease" ] && assets+=("$workdir/InRelease")
 [ -f "$workdir/Release.gpg" ] && assets+=("$workdir/Release.gpg")
 
-# Upload debs too
-for f in "$workdir"/*.deb; do
+# Upload *new* debs too (previous debs remain as existing release assets)
+for f in "$newdir"/*.deb; do
   assets+=("$f")
 done
 
