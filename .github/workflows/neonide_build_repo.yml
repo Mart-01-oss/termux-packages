@@ -304,14 +304,6 @@ jobs:
           echo "HOST_LLVM_BASE_DIR_IN_CONTAINER=$HOST_LLVM_BASE_DIR_IN_CONTAINER" >> "$GITHUB_OUTPUT"
           echo "Using LLVM base dir: $HOST_LLVM_BASE_DIR_IN_CONTAINER"
 
-      - name: Ensure Android SDK/NDK available in docker
-        if: ${{ steps.select.outputs.has_packages == 'true' }}
-        env:
-          TERMUX_DOCKER__HOST_TERMUX_TOPDIR: /mnt/termux-topdir
-        run: |
-          set -euo pipefail
-          ./scripts/run-docker.sh bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi'
-
       - id: build_shard
         name: Build packages for this shard
         if: ${{ steps.select.outputs.has_packages == 'true' }}
@@ -320,10 +312,6 @@ jobs:
           HOST_LLVM_BASE_DIR_IN_CONTAINER: ${{ steps.llvm.outputs.HOST_LLVM_BASE_DIR_IN_CONTAINER }}
         run: |
           set -euo pipefail
-
-          # Ensure Android SDK/NDK exists inside the docker builder.
-          # Some runner situations (fresh container recreation) may cause the NDK dir to be missing.
-          ./scripts/run-docker.sh bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; echo "INFO: NDK=$NDK ANDROID_HOME=$ANDROID_HOME"; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; test -d "$NDK"'
 
           shard_failed=0
           : > logs/FAILED_PACKAGES.txt
@@ -354,7 +342,8 @@ jobs:
               TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
               # Flat APT repo hosted as GitHub Release assets (large debs)
               TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
-              ./build-package.sh -i -a aarch64 "$pkg" 2>&1 | tee -a "$log_path"
+              PKG="$pkg" \
+              bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; exec ./build-package.sh -i -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
             rc=${PIPESTATUS[0]}
 
             if [ $rc -ne 0 ]; then
@@ -366,9 +355,6 @@ jobs:
               # Restart the container before retrying to ensure a clean environment.
               docker rm -f termux-package-builder >/dev/null 2>&1 || true
 
-              # Re-ensure Android SDK/NDK exists after recreating the container.
-              ./scripts/run-docker.sh bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; echo "INFO: NDK=$NDK ANDROID_HOME=$ANDROID_HOME"; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; test -d "$NDK"'
-
               ./scripts/run-docker.sh env \
                 TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" \
                 BUILD_CC="$HOST_LLVM_BASE_DIR_IN_CONTAINER/bin/clang" \
@@ -378,7 +364,8 @@ jobs:
                 TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
                 # Flat APT repo hosted as GitHub Release assets (large debs)
                 TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
-                ./build-package.sh -a aarch64 "$pkg" 2>&1 | tee -a "$log_path"
+                PKG="$pkg" \
+                bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; exec ./build-package.sh -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
               rc=${PIPESTATUS[0]}
             fi
             set +o pipefail
