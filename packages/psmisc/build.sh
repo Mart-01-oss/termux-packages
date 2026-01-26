@@ -10,3 +10,13 @@ TERMUX_PKG_DEPENDS="ncurses"
 TERMUX_PKG_ESSENTIAL=true
 TERMUX_PKG_BUILD_IN_SRC=true
 TERMUX_PKG_RM_AFTER_INSTALL="bin/pstree.x11"
+
+termux_step_pre_configure() {
+	# GitLab tag archives do not ship pre-generated ./configure.
+	# Generate the autotools build system before configuring.
+	if [ -x ./autogen.sh ]; then
+		./autogen.sh
+	else
+		autoreconf -fi
+	fi
+}

@@ -1,6 +1,6 @@
 --- a/src/source-build-externals/src/azure-activedirectory-identitymodel-extensions-for-dotnet/build/common.props
 +++ b/src/source-build-externals/src/azure-activedirectory-identitymodel-extensions-for-dotnet/build/common.props
-@@ -41,6 +41,11 @@
+@@ -41,6 +41,14 @@
    <PropertyGroup>
      <NoWarn>$(NoWarn);SYSLIB0050</NoWarn>
      <NoWarn>$(NoWarn);SYSLIB0051</NoWarn>
