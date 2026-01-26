@@ -130,22 +130,41 @@ generate_packages_stanza_for_deb() {
 
 # Normalize Filename: fields for apt Packages files.
 # - Keep absolute URLs as-is (https://...)
-# - Prefix relative paths with "./" if enabled.
+# - Optionally prefix relative paths with "./".
+# - Optionally strip a leading "./" from relative paths.
 normalize_packages_filenames_inplace() {
   local file="$1"
   [[ -f "$file" ]] || return 0
-  [[ "$NEONIDE_PACKAGES_PREFIX_DOTSLASH" == "true" ]] || return 0
+
+  : "${NEONIDE_PACKAGES_PREFIX_DOTSLASH:=true}"
+  : "${NEONIDE_PACKAGES_STRIP_DOTSLASH:=false}"
+
+  # No-op fast path.
+  if [[ "$NEONIDE_PACKAGES_PREFIX_DOTSLASH" != "true" && "$NEONIDE_PACKAGES_STRIP_DOTSLASH" != "true" ]]; then
+    return 0
+  fi
 
   local tmp
   tmp="$(mktemp)"
-  awk 'BEGIN{OFS=""}
+  awk -v prefix="$NEONIDE_PACKAGES_PREFIX_DOTSLASH" -v strip="$NEONIDE_PACKAGES_STRIP_DOTSLASH" 'BEGIN{OFS=""}
     {
       if ($0 ~ /^Filename: /) {
         fn=$0
         sub(/^Filename: /, "", fn)
+        # Leave absolute URLs untouched.
         if (fn ~ /^https?:\/\//) { print $0; next }
-        if (fn ~ /^\.\//) { print $0; next }
-        print "Filename: ./", fn; next
+
+        if (strip == "true") {
+          sub(/^\.\//, "", fn)
+        }
+
+        if (prefix == "true") {
+          if (fn ~ /^\.\//) { print "Filename: ", fn; next }
+          print "Filename: ./", fn; next
+        }
+
+        # Neither prefixing nor URL: just print normalized line.
+        print "Filename: ", fn; next
       }
       print $0
     }' "$file" > "$tmp"
@@ -263,8 +282,14 @@ if [[ "$NEONIDE_LARGE_DEB_PUBLISH_MODE" == "release" && -z "$NEONIDE_LARGE_DEB_R
   exit 1
 fi
 
-shopt -s nullglob
-for deb in "$DEBS_DIR"/*.deb; do
+# Collect .deb files (recursively) because artifacts may contain nested directories.
+mapfile -d '' __DEB_FILES < <(find "$DEBS_DIR" -type f -name '*.deb' -print0 2>/dev/null || true)
+
+if [[ "${#__DEB_FILES[@]}" -eq 0 ]]; then
+  echo "WARN: No .deb files found under DEBS_DIR='$DEBS_DIR'" >&2
+fi
+
+for deb in "${__DEB_FILES[@]}"; do
   pkg="$(get_pkg_name_from_deb "$deb")"
   if [[ -z "$pkg" ]]; then
     # fallback to filename prefix
@@ -386,7 +411,7 @@ for deb in "$DEBS_DIR"/*.deb; do
   copied=1
 
 done
-shopt -u nullglob
+unset __DEB_FILES
 
 if [[ "$FAIL_ON_RECIPE_MISMATCH" == "true" && $mismatch -ne 0 ]]; then
   echo "ERROR: Recipe/deb metadata mismatches detected and FAIL_ON_RECIPE_MISMATCH=true" >&2

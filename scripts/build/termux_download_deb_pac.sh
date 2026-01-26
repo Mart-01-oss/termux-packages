@@ -131,7 +131,45 @@ termux_download_deb_pac() {
 		fi
 	done
 
+	# If not found in standard repos, optionally fall back to a flat GitHub Release repo.
+	# This allows reusing already-built *large* packages hosted as release assets.
 	if [ "$PKG_HASH" = "" ] || [ "$PKG_HASH" = "null" ]; then
+		if [[ -n "${TERMUX_RELEASE_DEB_REPO_URL:-}" ]]; then
+			local release_base="${TERMUX_RELEASE_DEB_REPO_URL%/}"
+			local release_packages_url="${TERMUX_RELEASE_DEB_REPO_PACKAGES_URL:-${release_base}/Packages}"
+			local tmp_packages="${TERMUX_COMMON_CACHEDIR:-/tmp}/release-flat-Packages"
+
+			# Best-effort fetch (no hash pinning here). We will still validate the .deb download via SHA256 from Packages.
+			if curl -LfsS "$release_packages_url" -o "$tmp_packages" 2>/dev/null; then
+				local found_line
+				found_line="$(awk -v pkg="$PACKAGE" -v ver="$VERSION" 'BEGIN{RS="";FS="\n"}
+					{
+						p="";v="";fn="";sha="";
+						for(i=1;i<=NF;i++){
+							if($i ~ /^Package: /){sub(/^Package: /,"",$i); p=$i}
+							else if($i ~ /^Version: /){sub(/^Version: /,"",$i); v=$i}
+							else if($i ~ /^Filename: /){sub(/^Filename: /,"",$i); fn=$i}
+							else if($i ~ /^SHA256: /){sub(/^SHA256: /,"",$i); sha=$i}
+						}
+						if(p==pkg && v==ver && fn!="" && sha!=""){print fn"|"sha; exit 0}
+					}
+				' "$tmp_packages" || true)"
+
+				if [[ -n "$found_line" ]]; then
+					PKG_PATH="${found_line%%|*}"
+					PKG_HASH="${found_line#*|}"
+					# Build URL from flat repo base + filename (strip leading ./)
+					PKG_PATH="${PKG_PATH#./}"
+					local url="${release_base}/${PKG_PATH}"
+					[[ "$TERMUX_QUIET_BUILD" != true ]] && echo "Found $PACKAGE in release repo ${release_base}"
+					termux_download "$url" \
+							"${TERMUX_COMMON_CACHEDIR}-${PACKAGE_ARCH}/${PKG_FILE}" \
+							"$PKG_HASH"
+					return $?
+				fi
+			fi
+		fi
+
 		return 1
 	fi
 

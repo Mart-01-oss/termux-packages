@@ -154,6 +154,8 @@ jobs:
           fi
 
           PAGES_PACKAGES="pages-repo/dists/stable/main/binary-aarch64/Packages"
+          RELEASE_PACKAGES_URL="https://github.com/Mart-01-oss/pages/releases/download/Package/Packages"
+          RELEASE_PACKAGES_FILE="release-packages.txt"
 
           # Load exclude list (bootstrap/core packages) into a set
           declare -A EXCLUDE=()
@@ -166,12 +168,29 @@ jobs:
 
           # Load already-published binary packages into a set (best-effort).
           # We treat presence in Packages as "already built" and skip unless FORCE_REBUILD=true.
+          #
+          # Sources:
+          # - Pages repo Packages (small debs)
+          # - GitHub Release flat repo Packages (large debs)
           declare -A PUBLISHED=()
-          if [ "$FORCE_REBUILD" != "true" ] && [ -f "$PAGES_PACKAGES" ]; then
-            while IFS= read -r p; do
-              [ -z "$p" ] && continue
-              PUBLISHED["$p"]=1
-            done < <((grep -E '^Package: ' "$PAGES_PACKAGES" || true) | sed -E 's/^Package: //' | sort -u)
+          if [ "$FORCE_REBUILD" != "true" ]; then
+            if [ -f "$PAGES_PACKAGES" ]; then
+              while IFS= read -r p; do
+                [ -z "$p" ] && continue
+                PUBLISHED["$p"]=1
+              done < <((grep -E '^Package: ' "$PAGES_PACKAGES" || true) | sed -E 's/^Package: //' | sort -u)
+            fi
+
+            # Fetch release Packages index (flat). This index is used for large debs.
+            rm -f "$RELEASE_PACKAGES_FILE" || true
+            if curl -LfsS "$RELEASE_PACKAGES_URL" -o "$RELEASE_PACKAGES_FILE" 2>/dev/null; then
+              while IFS= read -r p; do
+                [ -z "$p" ] && continue
+                PUBLISHED["$p"]=1
+              done < <((grep -E '^Package: ' "$RELEASE_PACKAGES_FILE" || true) | sed -E 's/^Package: //' | sort -u)
+            else
+              echo "INFO: Could not fetch release Packages from $RELEASE_PACKAGES_URL (ok if no large repo yet)." >&2
+            fi
           fi
 
           # Enumerate source recipes (top-level ./packages/<name>)
@@ -329,6 +348,8 @@ jobs:
               TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
               TERMUX_ALLOW_REVISION_MISMATCH="true" \
               TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
+              # Flat APT repo hosted as GitHub Release assets (large debs)
+              TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
               ./build-package.sh -i -a aarch64 "$pkg" 2>&1 | tee -a "$log_path"
             rc=${PIPESTATUS[0]}
 
@@ -348,6 +369,8 @@ jobs:
                 TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
                 TERMUX_ALLOW_REVISION_MISMATCH="true" \
                 TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
+                # Flat APT repo hosted as GitHub Release assets (large debs)
+                TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
                 ./build-package.sh -a aarch64 "$pkg" 2>&1 | tee -a "$log_path"
               rc=${PIPESTATUS[0]}
             fi
@@ -493,6 +516,7 @@ jobs:
             exit 0
           fi
 
+          # Keep in sync with neonide_publish_prebuilt_debs.yml default (large_deb_threshold_mb)
           threshold_mb=99
           threshold_bytes=$((threshold_mb*1024*1024))
 
@@ -531,69 +555,35 @@ jobs:
 
           echo "has_debs=true" >> "$GITHUB_OUTPUT"
 
-      - name: Create/update GitHub Release tag for large deb assets
+      - name: Publish large debs to GitHub Release as flat APT repo (Packages/Release)
         if: ${{ steps.debs.outputs.has_large == 'true' }}
-        id: rel
         env:
           # Use the pages PAT since the release lives in Mart-01-oss/pages
           GH_TOKEN: ${{ secrets.PAGES_PAT }}
+          DEBS_DIR: ${{ github.workspace }}/prebuilt-debs-large
+          LARGE_DEB_THRESHOLD_MB: "99"
+          RELEASE_REPO: Mart-01-oss/pages
+          RELEASE_TAG: Package
+          APT_ARCH: aarch64
+          NEONIDE_GPG_KEY_ID: ${{ secrets.NEONIDE_GPG_KEY_ID }}
+          NEONIDE_GPG_PASSPHRASE: ${{ secrets.NEONIDE_GPG_PASSPHRASE }}
         run: |
           set -euo pipefail
-          tag="Package"
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          # Create the tag release if it doesn't exist. If it exists, keep it.
-          if gh release view "$tag" --repo "Mart-01-oss/pages" >/dev/null 2>&1; then
-            echo "[*] Release '$tag' already exists"
-          else
-            echo "[*] Creating release '$tag'"
-            gh release create "$tag" --repo "Mart-01-oss/pages" --title "$tag" --notes "Large .deb assets for NeonIDE APT repo." --latest=false
-          fi
+          bash ./scripts/neonide-publish-large-debs-to-release.sh
 
-      - name: Upload large debs to GitHub Release (Package)
-        if: ${{ steps.debs.outputs.has_large == 'true' }}
-        env:
-          GH_TOKEN: ${{ secrets.PAGES_PAT }}
-        run: |
-          set -euo pipefail
-          tag="Package"
-          shopt -s nullglob
-          files=(prebuilt-debs-large/*.deb)
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No large files to upload."
-            exit 0
-          fi
-
-          # Skip upload for assets that already exist with same name and size.
-          assets_json="$(gh api -H 'Accept: application/vnd.github+json' \
-            "/repos/Mart-01-oss/pages/releases/tags/${tag}")"
-
-          for f in "${files[@]}"; do
-            name="$(basename "$f")"
-            size="$(stat -c%s "$f")"
-            existing_size="$(jq -r --arg n "$name" '.assets[]? | select(.name==$n) | .size' <<<"$assets_json" | head -n1)"
-            if [ -n "$existing_size" ] && [ "$existing_size" != "null" ] && [ "$existing_size" = "$size" ]; then
-              echo "[=] Release asset already exists (same size), skipping: $name"
-              continue
-            fi
-            echo "[+] Uploading release asset: $name ($size bytes)"
-            gh release upload "$tag" "$f" --repo "Mart-01-oss/pages" --clobber
-          done
-
-      - name: Publish debs into pages APT repo (store small in pages, reference large via release)
-        if: ${{ steps.debs.outputs.has_debs == 'true' }}
+      - name: Publish debs into pages APT repo (small debs only; no large deb indexes)
+        if: ${{ steps.debs.outputs.has_small == 'true' }}
         env:
           PAGES_REPO_DIR: ${{ github.workspace }}/pages-repo
-          # Provide ALL debs so the script can generate external stanzas for large ones.
-          DEBS_DIR: ${{ github.workspace }}/prebuilt-debs
+          DEBS_DIR: ${{ github.workspace }}/prebuilt-debs-small
           APT_DIST: stable
           APT_COMPONENT: main
           APT_ARCH: aarch64
           FORCE_OVERWRITE: "false"
-          NEONIDE_LARGE_DEB_PUBLISH_MODE: release
+          NEONIDE_LARGE_DEB_PUBLISH_MODE: pages
           NEONIDE_LARGE_DEB_THRESHOLD_MB: "99"
-          # Always reference the canonical repo/tag for large assets
-          # NOTE: base URL must be a /releases/download/<tag> URL so apt can fetch the actual file.
-          NEONIDE_LARGE_DEB_RELEASE_BASE_URL: "https://github.com/Mart-01-oss/pages/releases/download/Package"
+          # Do not prefix relative Filename entries with "./" in Packages.
+          NEONIDE_PACKAGES_PREFIX_DOTSLASH: "false"
           NEONIDE_GPG_KEY_ID: ${{ secrets.NEONIDE_GPG_KEY_ID }}
           NEONIDE_GPG_PASSPHRASE: ${{ secrets.NEONIDE_GPG_PASSPHRASE }}
         run: |
