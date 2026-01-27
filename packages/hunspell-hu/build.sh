@@ -21,7 +21,7 @@ termux_step_make_install() {
 	# In which case we need to bump version and checksum used.
 	termux_download https://cgit.freedesktop.org/libreoffice/dictionaries/plain/hu_HU/hu_HU.aff \
 			$TERMUX_PREFIX/share/hunspell/hu_HU.aff \
-			7fbfe784398e6605cae9d75988187cd59e8cfa1040cc30783a55cd92d3b9ea41
+			f3a2748dd535cfde2142ab17d0f7f8e4787b03fb25a60829c69ac8d493db4802
 	termux_download https://cgit.freedesktop.org/libreoffice/dictionaries/plain/hu_HU/hu_HU.dic \
 			$TERMUX_PREFIX/share/hunspell/hu_HU.dic \
 			2ec787f2992a8affe82a9aa912a0a881b21dfa6a61dc8a35aa160e5e41565bda
