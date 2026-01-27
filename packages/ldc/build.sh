@@ -26,9 +26,16 @@ TERMUX_PKG_BUILD_DEPENDS="binutils-cross"
 TERMUX_PKG_NO_STATICSPLIT=true
 TERMUX_PKG_HOSTBUILD=true
 TERMUX_PKG_FORCE_CMAKE=true
-#These CMake args are only used to configure a patched LLVM
+# These CMake args are only used to configure the bundled/patched LLVM.
+# NOTE: termux_step_configure_cmake passes absolute CMAKE_INSTALL_{LIBDIR,INCLUDEDIR} by default.
+# For this package we install LLVM into a private prefix ($LLVM_INSTALL_DIR). If LIBDIR/INCLUDEDIR
+# are absolute, CMake may redirect headers/libs into $TERMUX_PREFIX instead, leaving
+# $LLVM_INSTALL_DIR/include missing e.g. llvm/Support/Compiler.h.
+# Force relative install dirs for the LLVM stage.
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+-DCMAKE_INSTALL_LIBDIR=lib
+-DCMAKE_INSTALL_INCLUDEDIR=include
 -DLLVM_ENABLE_PLUGINS=OFF
 -DLLVM_BUILD_TOOLS=OFF
 -DLLVM_BUILD_UTILS=OFF
