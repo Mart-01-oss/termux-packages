@@ -348,27 +348,27 @@ jobs:
               bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; exec ./build-package.sh -i -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
             rc=${PIPESTATUS[0]}
 
-            if [ $rc -ne 0 ]; then
-              echo "[!] Build with -i failed for $pkg (rc=$rc). Retrying without -i..." | tee -a "$log_path" >&2
+            #if [ $rc -ne 0 ]; then
+              #echo "[!] Build with -i failed for $pkg (rc=$rc). Retrying without -i..." | tee -a "$log_path" >&2
 
               # The Termux docker builder reuses a single long-lived container (termux-package-builder).
               # If the previous build was interrupted or left processes behind, the next invocation may
               # hit the global build lock ("Another build is already running within same environment").
               # Restart the container before retrying to ensure a clean environment.
-              docker rm -f termux-package-builder >/dev/null 2>&1 || true
+              #docker rm -f termux-package-builder >/dev/null 2>&1 || true
 
-              ./scripts/run-docker.sh env \
-                TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" \
-                BUILD_CC="$HOST_LLVM_BASE_DIR_IN_CONTAINER/bin/clang" \
-                TERMUX_REPO_APP__PACKAGE_NAME="com.neonide.studio" \
-                TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
-                TERMUX_ALLOW_REVISION_MISMATCH="true" \
-                TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
-                TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
-                HOME="/home/builder" \
-                PKG="$pkg" \
-                bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; exec ./build-package.sh -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
-              rc=${PIPESTATUS[0]}
+              #./scripts/run-docker.sh env \
+                #TERMUX_HOST_LLVM_BASE_DIR="$HOST_LLVM_BASE_DIR_IN_CONTAINER" \
+                #BUILD_CC="$HOST_LLVM_BASE_DIR_IN_CONTAINER/bin/clang" \
+                #TERMUX_REPO_APP__PACKAGE_NAME="com.neonide.studio" \
+                #TERMUX_ALLOW_UNVERIFIED_REPOS="true" \
+               # TERMUX_ALLOW_REVISION_MISMATCH="true" \
+                #TERMUX_USE_OFFICIAL_REPO_FALLBACK="false" \
+               # TERMUX_RELEASE_DEB_REPO_URL="https://github.com/Mart-01-oss/pages/releases/download/Package" \
+              #  HOME="/home/builder" \
+               # PKG="$pkg" \
+              #  bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; exec ./build-package.sh -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
+             # rc=${PIPESTATUS[0]}
             fi
             set +o pipefail
             set -e
