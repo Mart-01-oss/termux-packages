@@ -11,3 +11,7 @@ TERMUX_PKG_UPDATE_TAG_TYPE="newest-tag"
 TERMUX_PKG_BREAKS="yajl-dev"
 TERMUX_PKG_REPLACES="yajl-dev"
 TERMUX_PKG_FORCE_CMAKE=true
+# Newer CMake versions dropped compatibility with CMake < 3.5. Some upstream
+# CMakeLists.txt still declare very old minimum versions, so enforce a policy
+# minimum to allow configuration.
+TERMUX_PKG_EXTRA_CONFIGURE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
