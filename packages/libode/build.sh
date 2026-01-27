@@ -11,9 +11,15 @@ TERMUX_PKG_BUILD_IN_SRC=true
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_FORCE_CMAKE=true
 TERMUX_PKG_DEPENDS="libc++, libccd"
+# NOTE: ODE exports a CMake target (ODE::ODE). When CMAKE_INSTALL_INCLUDEDIR is absolute,
+# some upstream config templates build include dirs as ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR},
+# producing a duplicated prefix like: /data/.../usr//data/.../usr/include.
+# We force relative install dirs (lib/include) to keep exported targets valid.
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS='
 -DBUILD_SHARED_LIBS=ON
 -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+-DCMAKE_INSTALL_LIBDIR=lib
+-DCMAKE_INSTALL_INCLUDEDIR=include
 -DODE_WITH_DEMOS=OFF
 -DODE_WITH_TESTS=OFF
 -DODE_WITH_LIBCCD=ON
