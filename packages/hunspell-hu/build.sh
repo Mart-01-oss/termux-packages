@@ -10,7 +10,7 @@ TERMUX_PKG_PLATFORM_INDEPENDENT=true
 termux_step_post_get_source() {
 	termux_download https://cgit.freedesktop.org/libreoffice/dictionaries/plain/hu_HU/README_hu_HU.txt \
 			$TERMUX_PKG_SRCDIR/README_hu_HU.txt \
-			cd2c7ae61d509dbb6eb298b8185e3b0c1cc2ed1f39d9ef146efd05e28fd541dc
+			52b17fc3d53b6935eab747a71894507d702f7f0fde379c819c16cc803005fc84
 }
 
 termux_step_make_install() {
