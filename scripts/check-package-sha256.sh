@@ -169,7 +169,8 @@ collect_tasks_for_build_sh() {
       if [[ $i -lt ${#shas[@]} ]]; then
         exp="${shas[$i]}"
       fi
-      printf "%s\t%s\n" "$i" "${urls[$i]}""$'\t'""$exp"
+      # Format: idx<TAB>url<TAB>expected
+      printf "%s\t%s\t%s\n" "$i" "${urls[$i]}" "$exp"
     done
   ' bash "$pkg_dir" 2>/dev/null)
   ec=$?
@@ -202,6 +203,8 @@ import os
 import re
 import sys
 import urllib.request
+import shutil
+import subprocess
 from pathlib import Path
 
 TASKS_TSV, RESULTS_TSV, FAILURES_TSV, SUMMARY_MD, JOBS, FIX = sys.argv[1:7]
@@ -250,13 +253,50 @@ def should_check(url: str, expected: str) -> tuple[bool, str]:
 
 
 def download_sha256(url: str, timeout: int = 120) -> str:
+    """Download URL and return sha256.
+
+    We must download the bytes to know whether TERMUX_PKG_SHA256 is correct.
+    Prefer curl (like Termux tooling) because it handles redirects/TLS better;
+    fallback to urllib if curl isn't available.
+    """
+
+    h = hashlib.sha256()
+
+    curl = shutil.which('curl')
+    if curl:
+        # -L: follow redirects
+        # -f: fail on HTTP errors
+        # -sS: quiet but show errors
+        # --retry: transient network resilience
+        # --connect-timeout/--max-time: avoid hangs
+        cmd = [
+            curl,
+            '-LfsS',
+            '--retry', '3',
+            '--retry-delay', '2',
+            '--connect-timeout', '20',
+            '--max-time', str(timeout),
+            '-A', 'termux-packages/check-package-sha256 (github-actions)',
+            url,
+        ]
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        assert p.stdout is not None
+        try:
+            for chunk in iter(lambda: p.stdout.read(1024 * 256), b''):
+                h.update(chunk)
+        finally:
+            # Ensure process exits and we collect stderr.
+            out, err = p.communicate(timeout=timeout)
+        if p.returncode != 0:
+            msg = err.decode('utf-8', errors='replace').strip()[-400:]
+            raise RuntimeError(f'curl_failed(rc={p.returncode}): {msg}')
+        return h.hexdigest()
+
+    # Fallback: urllib
     req = urllib.request.Request(
         url,
-        headers={
-            'User-Agent': 'termux-packages/check-package-sha256 (github-actions)',
-        },
+        headers={'User-Agent': 'termux-packages/check-package-sha256 (github-actions)'},
     )
-    h = hashlib.sha256()
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         while True:
             chunk = resp.read(1024 * 256)
