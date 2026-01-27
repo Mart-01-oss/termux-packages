@@ -11,6 +11,8 @@ on:
     - 'packages/**'
     - 'root-packages/**'
     - 'x11-packages/**'
+  schedule:
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       batch_size:
