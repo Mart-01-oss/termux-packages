@@ -8,6 +8,13 @@ TERMUX_PKG_SRCURL=https://github.com/stevengj/nlopt/archive/v${TERMUX_PKG_VERSIO
 TERMUX_PKG_SHA256=506f83a9e778ad4f204446e99509cb2bdf5539de8beccc260a014bd560237be1
 TERMUX_PKG_DEPENDS="libc++"
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
+# Override Termux's default absolute CMAKE_INSTALL_*DIR values for this package.
+# NLopt's exported CMake target uses ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_INCLUDEDIR},
+# so if INCLUDEDIR is absolute it results in a duplicated prefix like:
+#   /data/.../usr//data/.../usr/include
+-DCMAKE_INSTALL_LIBDIR=lib
+-DCMAKE_INSTALL_INCLUDEDIR=include
+
 -DNLOPT_CXX=ON
 -DNLOPT_FORTRAN=OFF
 -DNLOPT_JAVA=OFF
