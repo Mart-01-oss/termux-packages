@@ -25,6 +25,7 @@ scripts/*.log
 # GitHub Actions build artifacts
 debs*
 checksum*
+/artifacts/
 
 # Built *.deb files.
 /debs/
