@@ -369,7 +369,7 @@ jobs:
                # PKG="$pkg" \
               #  bash -lc 'set -euo pipefail; cd "$HOME/termux-packages"; . ./scripts/properties.sh; if [ ! -d "$NDK" ]; then echo "INFO: NDK missing in container at $NDK, running setup-android-sdk.sh"; ./scripts/setup-android-sdk.sh; fi; exec ./build-package.sh -a aarch64 "$PKG"' 2>&1 | tee -a "$log_path"
              # rc=${PIPESTATUS[0]}
-            fi
+           # fi
             set +o pipefail
             set -e
 
