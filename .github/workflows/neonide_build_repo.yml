@@ -12,7 +12,7 @@ on:
     - 'root-packages/**'
     - 'x11-packages/**'
   schedule:
-    - cron: '0 * * * *'
+    - cron: '30 * * * *'
   workflow_dispatch:
     inputs:
       batch_size:
