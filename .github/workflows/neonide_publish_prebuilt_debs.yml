@@ -40,6 +40,11 @@ on:
         required: false
         type: boolean
         default: false
+      force_republish:
+        description: "Force a republish run even if repo content would be identical (pushes an empty commit if needed)."
+        required: false
+        type: boolean
+        default: false
       expected_packages:
         description: "Optional: space/newline-separated list of package names expected to be published (others will be skipped)."
         required: false
@@ -179,7 +184,7 @@ jobs:
           APT_DIST: ${{ inputs.apt_dist }}
           APT_COMPONENT: ${{ inputs.apt_component }}
           APT_ARCH: ${{ inputs.apt_arch }}
-          FORCE_OVERWRITE: ${{ inputs.force_overwrite && 'true' || 'false' }}
+          FORCE_OVERWRITE: ${{ (inputs.force_overwrite || inputs.force_republish) && 'true' || 'false' }}
           EXPECTED_PACKAGES: ${{ inputs.expected_packages }}
           FAIL_ON_RECIPE_MISMATCH: ${{ inputs.fail_on_recipe_mismatch && 'true' || 'false' }}
           # Large debs are handled by the Release repo step; Pages repo should not reference them.
@@ -196,15 +201,26 @@ jobs:
       - name: Commit & push pages repo changes (if any)
         env:
           PAGES_PAT: ${{ secrets.PAGES_PAT }}
+          FORCE_REPUBLISH: ${{ inputs.force_republish && 'true' || 'false' }}
         run: |
           set -euo pipefail
           cd pages-repo
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           if [ -z "$(git status --porcelain=v1)" ]; then
+            if [ "${FORCE_REPUBLISH}" = "true" ]; then
+              echo "No file changes, but force_republish=true -> pushing empty commit."
+              git commit --allow-empty -m "Force republish prebuilt debs (${{ inputs.deb_artifact_name }})"
+              git push origin main
+              exit 0
+            fi
+
             echo "No changes to push."
             exit 0
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add -A
           git commit -m "Publish prebuilt debs (${{ inputs.deb_artifact_name }})"
           git push origin main
