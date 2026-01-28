@@ -3,7 +3,7 @@ TERMUX_PKG_DESCRIPTION="Provides non UI access to MEGA services"
 TERMUX_PKG_LICENSE="BSD 2-Clause"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION="2.0.0"
-TERMUX_PKG_REVISION=1
+TERMUX_PKG_REVISION=2
 TERMUX_PKG_SRCURL=git+https://github.com/meganz/MEGAcmd
 TERMUX_PKG_GIT_BRANCH=${TERMUX_PKG_VERSION}_Linux
 TERMUX_PKG_AUTO_UPDATE=true
@@ -39,7 +39,10 @@ termux_step_pre_configure() {
 	# so a sysroot of $TERMUX_PREFIX would yield duplicated paths like:
 	#   $TERMUX_PREFIX$TERMUX_PREFIX/include
 	# which breaks CMake imported targets (e.g. PkgConfig::cares).
-	unset PKG_CONFIG_SYSROOT_DIR
+	# Some pkg-config implementations (pkgconf) may have a default sysroot.
+	# Set PKG_CONFIG_SYSROOT_DIR to an empty value (not just unset) to prevent
+	# duplicated prefixes like $TERMUX_PREFIX$TERMUX_PREFIX/include.
+	export PKG_CONFIG_SYSROOT_DIR=
 
 	# Ensure we always use a pkg-config that does not apply a sysroot, even if the
 	# outer environment re-exports PKG_CONFIG_SYSROOT_DIR later.
@@ -49,7 +52,7 @@ termux_step_pre_configure() {
 	real_pkg_config="$(command -v pkg-config)"
 	cat > "$wrapper_dir/pkg-config" <<-'EOF'
 		#!/bin/sh
-		unset PKG_CONFIG_SYSROOT_DIR
+		export PKG_CONFIG_SYSROOT_DIR=
 		exec "__REAL_PKG_CONFIG__" "$@"
 	EOF
 	sed -i "s|__REAL_PKG_CONFIG__|$real_pkg_config|" "$wrapper_dir/pkg-config"
