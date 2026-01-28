@@ -13,7 +13,7 @@
  libgnustep-base_DLL_DEF = libgnustep-base.def
 --- /dev/null
 +++ b/Source/objc_alloc_init_compat.m
-@@ -0,0 +1,41 @@
+@@ -0,0 +1,36 @@
 +/*
 + * Compatibility shim for Android/Termux builds.
 + *
