@@ -9,3 +9,4 @@ TERMUX_PKG_SRCURL=https://xorg.freedesktop.org/archive/individual/lib/libXdmcp-$
 TERMUX_PKG_SHA256=d8a5222828c3adab70adf69a5583f1d32eb5ece04304f7f8392b6a353aa2228c
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_BUILD_DEPENDS="xorgproto, xorg-util-macros"
+TERMUX_PKG_RM_AFTER_INSTALL="lib/*.la"

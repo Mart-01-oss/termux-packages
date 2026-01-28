@@ -48,6 +48,7 @@ termux_step_pre_configure() {
 	# object files), avoiding --as-needed ordering issues.
 	export ADDITIONAL_OBJC_LIBS="${ADDITIONAL_OBJC_LIBS:-} -lobjc"
 	export OBJCFLAGS="${OBJCFLAGS:-} -fno-objc-convert-messages-to-runtime-calls"
+	export ADDITIONAL_OBJCFLAGS="${ADDITIONAL_OBJCFLAGS:-} -fno-objc-convert-messages-to-runtime-calls"
 
 	local bin="$TERMUX_PKG_BUILDDIR/bin"
 	mkdir -p "$bin"
