@@ -72,10 +72,32 @@ jobs:
             exit 1
           fi
 
+          # If a manual package list was provided, reduce shards to at most the number
+          # of requested packages. This avoids lots of empty shard jobs and makes
+          # it easier to reason about distribution (e.g. 3 packages => 3 shards).
+          PACKAGES_INPUT='${{ inputs.packages }}'
+          if [ -n "${PACKAGES_INPUT//[[:space:]]/}" ]; then
+            mapfile -t REQUESTED < <(
+              printf '%s\n' "$PACKAGES_INPUT" \
+                | tr ',\t' '\n' \
+                | sed -E 's/#.*$//' \
+                | tr ' ' '\n' \
+                | sed '/^$/d' \
+                | sort -u
+            )
+            req_count="${#REQUESTED[@]}"
+            if [ "$req_count" -gt 0 ]; then
+              if [ "$req_count" -lt "$SHARDS" ]; then
+                echo "INFO: packages input provided ($req_count requested); reducing shard_count from $SHARDS to $req_count."
+                SHARDS="$req_count"
+              fi
+            fi
+          fi
+
           json='{"include":['
           for ((i=0;i<SHARDS;i++)); do
             if [ "$i" -gt 0 ]; then json+=','; fi
-            json+="{\"shard\":$i}"
+            json+="{\"shard\":$i,\"shards\":$SHARDS}"
           done
           json+=']}'
 
@@ -146,7 +168,9 @@ jobs:
 
           # `inputs.*` is only populated for workflow_dispatch. For push builds it is
           # an empty string, so fall back to the workflow_dispatch defaults.
-          SHARDS='${{ inputs.shard_count }}'
+          # Use the shard count produced by the plan job (may be reduced when
+          # manual 'packages' input is provided).
+          SHARDS='${{ matrix.shards }}'
           SHARD='${{ matrix.shard }}'
           BATCH_SIZE='${{ inputs.batch_size }}'
           FORCE_REBUILD='${{ inputs.force_rebuild && 'true' || 'false' }}'
@@ -263,10 +287,19 @@ jobs:
               exit 1
             fi
 
+            echo "INFO: Requested packages (unique): ${REQUESTED[*]}"
+
             for token in "${REQUESTED[@]}"; do
               pkg="${token##*/}"
               add_if_requested "$pkg"
             done
+
+            if [ "${#selected_all[@]}" -eq 0 ]; then
+              echo "::error ::All requested packages were skipped (most likely because they are already published). Set force_rebuild=true to rebuild." >&2
+              exit 1
+            fi
+
+            echo "INFO: Will build (after filtering already-published unless force_rebuild=true): ${selected_all[*]}"
           else
             # Auto-selection mode (existing behavior)
 
