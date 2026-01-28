@@ -1,6 +1,6 @@
 --- a/sdk/cmake/modules/sdklib_libraries.cmake
 +++ b/sdk/cmake/modules/sdklib_libraries.cmake
-@@ -145,5 +145,19 @@
+@@ -147,5 +147,20 @@
 -        if(USE_C_ARES)
 -            pkg_check_modules(cares REQUIRED IMPORTED_TARGET libcares)
 -            target_link_libraries(SDKlib PRIVATE PkgConfig::cares)

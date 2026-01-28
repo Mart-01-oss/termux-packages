@@ -16,11 +16,11 @@ on:
   workflow_dispatch:
     inputs:
       packages:
-        description: "Optional: explicit list of source package recipes to build (names under ./packages). Separate by space/comma/newline. Example: 'moria jsoncpp'. If empty, auto-selects packages."
+        description: "Optional: explicit list of source package recipes to ALWAYS include in this run (names under ./packages). Separate by space/comma/newline. Example: 'moria jsoncpp'."
         required: false
         default: ""
       batch_size:
-        description: "Max number of source packages to build per run (total across all shards). Ignored when 'packages' is provided."
+        description: "Max number of source packages to build per run (total across all shards). Applies to auto-selection too; requested packages are added first."
         required: false
         default: "80"
       shard_count:
@@ -72,32 +72,10 @@ jobs:
             exit 1
           fi
 
-          # If a manual package list was provided, reduce shards to at most the number
-          # of requested packages. This avoids lots of empty shard jobs and makes
-          # it easier to reason about distribution (e.g. 3 packages => 3 shards).
-          PACKAGES_INPUT='${{ inputs.packages }}'
-          if [ -n "${PACKAGES_INPUT//[[:space:]]/}" ]; then
-            mapfile -t REQUESTED < <(
-              printf '%s\n' "$PACKAGES_INPUT" \
-                | tr ',\t' '\n' \
-                | sed -E 's/#.*$//' \
-                | tr ' ' '\n' \
-                | sed '/^$/d' \
-                | sort -u
-            )
-            req_count="${#REQUESTED[@]}"
-            if [ "$req_count" -gt 0 ]; then
-              if [ "$req_count" -lt "$SHARDS" ]; then
-                echo "INFO: packages input provided ($req_count requested); reducing shard_count from $SHARDS to $req_count."
-                SHARDS="$req_count"
-              fi
-            fi
-          fi
-
           json='{"include":['
           for ((i=0;i<SHARDS;i++)); do
             if [ "$i" -gt 0 ]; then json+=','; fi
-            json+="{\"shard\":$i,\"shards\":$SHARDS}"
+            json+="{\"shard\":$i}"
           done
           json+=']}'
 
@@ -168,9 +146,7 @@ jobs:
 
           # `inputs.*` is only populated for workflow_dispatch. For push builds it is
           # an empty string, so fall back to the workflow_dispatch defaults.
-          # Use the shard count produced by the plan job (may be reduced when
-          # manual 'packages' input is provided).
-          SHARDS='${{ matrix.shards }}'
+          SHARDS='${{ inputs.shard_count }}'
           SHARD='${{ matrix.shard }}'
           BATCH_SIZE='${{ inputs.batch_size }}'
           FORCE_REBUILD='${{ inputs.force_rebuild && 'true' || 'false' }}'
@@ -235,20 +211,24 @@ jobs:
           PACKAGES_INPUT='${{ inputs.packages }}'
 
           selected_all=()
+          declare -A ALREADY=()
 
           add_if_needed() {
             local pkg="$1"
             [ -z "$pkg" ] && return 0
+            [ -n "${ALREADY[$pkg]:-}" ] && return 0
             [ -n "${EXCLUDE[$pkg]:-}" ] && return 0
             if [ "$FORCE_REBUILD" != "true" ] && [ -n "${PUBLISHED[$pkg]:-}" ]; then
               return 0
             fi
             selected_all+=("$pkg")
+            ALREADY["$pkg"]=1
           }
 
           add_if_requested() {
             local pkg="$1"
             [ -z "$pkg" ] && return 0
+            [ -n "${ALREADY[$pkg]:-}" ] && return 0
             if [ -n "${EXCLUDE[$pkg]:-}" ]; then
               echo "::error ::Requested package '$pkg' is in neonide-bootstrap-packages exclude list. Remove it from the request or update scripts/neonide-bootstrap-packages.txt." >&2
               exit 1
@@ -263,14 +243,17 @@ jobs:
               return 0
             fi
             selected_all+=("$pkg")
+            ALREADY["$pkg"]=1
           }
 
           # Fast lookup of existing recipes
           declare -A HAS_RECIPE=()
           for p in "${ALL_RECIPES[@]}"; do HAS_RECIPE["$p"]=1; done
 
+          # If a manual package list was provided, include those packages first,
+          # THEN continue with the normal auto-selection across all shards.
           if [ -n "${PACKAGES_INPUT//[[:space:]]/}" ]; then
-            echo "INFO: Using manually provided package list (workflow_dispatch input 'packages')."
+            echo "INFO: packages input provided; including requested packages first (then auto-selecting remaining packages)."
 
             # Normalize: allow space/comma/newline separated values; allow passing 'packages/<name>' too.
             mapfile -t REQUESTED < <(
@@ -288,38 +271,30 @@ jobs:
             fi
 
             echo "INFO: Requested packages (unique): ${REQUESTED[*]}"
-
             for token in "${REQUESTED[@]}"; do
               pkg="${token##*/}"
               add_if_requested "$pkg"
             done
+          fi
 
-            if [ "${#selected_all[@]}" -eq 0 ]; then
-              echo "::error ::All requested packages were skipped (most likely because they are already published). Set force_rebuild=true to rebuild." >&2
-              exit 1
-            fi
+          # Auto-selection mode (existing behavior)
 
-            echo "INFO: Will build (after filtering already-published unless force_rebuild=true): ${selected_all[*]}"
-          else
-            # Auto-selection mode (existing behavior)
-
-            # Add priority packages (if they exist as recipes)
-            for p in "${PRIORITY[@]}"; do
-              if [ -n "${HAS_RECIPE[$p]:-}" ]; then
-                add_if_needed "$p"
-              fi
-            done
-
-            # Then add the rest in sorted order
-            for p in "${ALL_RECIPES[@]}"; do
-              [ -n "${IS_PRIORITY[$p]:-}" ] && continue
+          # Add priority packages (if they exist as recipes)
+          for p in "${PRIORITY[@]}"; do
+            if [ -n "${HAS_RECIPE[$p]:-}" ]; then
               add_if_needed "$p"
-            done
-
-            # Apply BATCH_SIZE across all shards (truncate before sharding)
-            if [ "${#selected_all[@]}" -gt "$BATCH_SIZE" ]; then
-              selected_all=("${selected_all[@]:0:$BATCH_SIZE}")
             fi
+          done
+
+          # Then add the rest in sorted order
+          for p in "${ALL_RECIPES[@]}"; do
+            [ -n "${IS_PRIORITY[$p]:-}" ] && continue
+            add_if_needed "$p"
+          done
+
+          # Apply BATCH_SIZE across all shards (truncate before sharding)
+          if [ "${#selected_all[@]}" -gt "$BATCH_SIZE" ]; then
+            selected_all=("${selected_all[@]:0:$BATCH_SIZE}")
           fi
 
           # Shard distribution (round-robin)
