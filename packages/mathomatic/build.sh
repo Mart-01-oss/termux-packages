@@ -4,8 +4,10 @@ TERMUX_PKG_LICENSE="LGPL-2.0"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION=16.0.5
 TERMUX_PKG_REVISION=7
-TERMUX_PKG_SRCURL="https://www.mathomatic.org/mathomatic-${TERMUX_PKG_VERSION}.tar.gz"
-TERMUX_PKG_SHA256=35a66f5cc47cfe55b71a49ba4ed424108212237799817f72ad547b77b9e6e577
+# Upstream site redirects this URL to an HTML page (Cloudflare), which breaks
+# non-interactive builds. Use a stable mirror instead.
+TERMUX_PKG_SRCURL="http://download.openpkg.org/components/cache/mathomatic/mathomatic-${TERMUX_PKG_VERSION}.tar.bz2"
+TERMUX_PKG_SHA256=976e6fed1014586bcd584e417c074fa86e4ca6a0fcc2950254da2efde99084ca
 TERMUX_PKG_BUILD_IN_SRC=true
 TERMUX_PKG_EXTRA_MAKE_ARGS="READLINE=1"
 TERMUX_PKG_DEPENDS="readline"
