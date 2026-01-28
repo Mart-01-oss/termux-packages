@@ -185,6 +185,11 @@ termux_setup_toolchain_28c() {
 	mkdir -p "$PKG_CONFIG_LIBDIR"
 	cat > $_TERMUX_TOOLCHAIN_TMPDIR/bin/pkg-config <<-HERE
 		#!/bin/sh
+		# Some CI setups export PKG_CONFIG_SYSROOT_DIR for cross builds.
+		# Termux .pc files already contain full $TERMUX_PREFIX include/library paths,
+		# so applying a sysroot would duplicate prefixes (e.g. $TERMUX_PREFIX$TERMUX_PREFIX/include)
+		# and break CMake FindPkgConfig imported targets.
+		unset PKG_CONFIG_SYSROOT_DIR
 		export PKG_CONFIG_DIR=
 		export PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR
 		exec $_HOST_PKGCONFIG "\$@"

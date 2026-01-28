@@ -3,7 +3,7 @@ TERMUX_PKG_DESCRIPTION="A library of general-purpose, non-graphical Objective C 
 TERMUX_PKG_LICENSE="GPL-2.0, LGPL-2.1"
 TERMUX_PKG_MAINTAINER="@termux"
 TERMUX_PKG_VERSION="1.31.1"
-TERMUX_PKG_REVISION=2
+TERMUX_PKG_REVISION=3
 TERMUX_PKG_SRCURL=https://github.com/gnustep/libs-base/releases/download/base-${TERMUX_PKG_VERSION//./_}/gnustep-base-${TERMUX_PKG_VERSION}.tar.gz
 TERMUX_PKG_SHA256=e7546f1c978a7c75b676953a360194a61e921cb45a4804497b4f346a460545cd
 TERMUX_PKG_AUTO_UPDATE=true
@@ -18,6 +18,11 @@ TERMUX_PKG_BUILD_IN_SRC=true
 # pass via make command line to ensure -lobjc is on the link line.
 TERMUX_PKG_EXTRA_MAKE_ARGS="
 ADDITIONAL_OBJC_LIBS=-lobjc
+# clang may lower patterns like [[Foo alloc] init] into objc_alloc_init (not
+# provided by libobjc2 on Android). Ensure this optimization is disabled even if
+# GNUstep make ignores OBJCFLAGS from the environment.
+CFLAGS+=-fno-objc-convert-messages-to-runtime-calls
+OBJCFLAGS+=-fno-objc-convert-messages-to-runtime-calls
 ADDITIONAL_OBJCFLAGS=-fno-objc-convert-messages-to-runtime-calls
 "
 
@@ -55,6 +60,13 @@ termux_step_pre_configure() {
 	# Add -lobjc via GNUstep make variables so it ends up in ALL_LIBS (after
 	# object files), avoiding --as-needed ordering issues.
 	export ADDITIONAL_OBJC_LIBS="${ADDITIONAL_OBJC_LIBS:-} -lobjc"
+	# clang may lower patterns like [[Foo alloc] init] into objc_alloc_init.
+	# libobjc2 on Android does not provide objc_alloc_init, so ensure this
+	# optimization is disabled for *all* Objective-C compilation.
+	#
+	# GNUstep make's makefiles don't consistently honor OBJCFLAGS in all build
+	# modes, but they do honor the compiler's CFLAGS, so set both.
+	export CFLAGS="${CFLAGS:-} -fno-objc-convert-messages-to-runtime-calls"
 	export OBJCFLAGS="${OBJCFLAGS:-} -fno-objc-convert-messages-to-runtime-calls"
 	export ADDITIONAL_OBJCFLAGS="${ADDITIONAL_OBJCFLAGS:-} -fno-objc-convert-messages-to-runtime-calls"
 	export LDFLAGS="${LDFLAGS:-} -lobjc"

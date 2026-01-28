@@ -12,7 +12,10 @@ TERMUX_PKG_EXTRA_CONFIGURE_ARGS="-Dbuild_dir=$TERMUX_PKG_BUILDDIR"
 TERMUX_PKG_GROUPS="games"
 
 termux_step_pre_configure() {
-	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -DCMAKE_C_COMPILER=$CC -DCMAKE_CXX_COMPILER=$CXX"
+	# Ensure CMake uses the Android toolchain compilers. Without this, CMake may
+	# fall back to the host /usr/bin/g++ which doesn't understand --target=... .
+	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -DCMAKE_C_COMPILER=${TERMUX_STANDALONE_TOOLCHAIN}/bin/${CC}"
+	TERMUX_PKG_EXTRA_CONFIGURE_ARGS+=" -DCMAKE_CXX_COMPILER=${TERMUX_STANDALONE_TOOLCHAIN}/bin/${CXX}"
 }
 
 termux_step_create_debscripts() {
