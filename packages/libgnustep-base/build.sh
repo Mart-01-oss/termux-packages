@@ -18,9 +18,6 @@ TERMUX_PKG_BUILD_IN_SRC=true
 # pass via make command line to ensure -lobjc is on the link line.
 TERMUX_PKG_EXTRA_MAKE_ARGS="
 ADDITIONAL_OBJC_LIBS=-lobjc
-# clang may lower patterns like [[Foo alloc] init] into objc_alloc_init (not
-# provided by libobjc2 on Android). Ensure this optimization is disabled even if
-# GNUstep make ignores OBJCFLAGS from the environment.
 CFLAGS+=-fno-objc-convert-messages-to-runtime-calls
 OBJCFLAGS+=-fno-objc-convert-messages-to-runtime-calls
 ADDITIONAL_OBJCFLAGS=-fno-objc-convert-messages-to-runtime-calls

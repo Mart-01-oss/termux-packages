@@ -1,4 +1,10 @@
 termux_step_start_build() {
+	# Some CI setups export PKG_CONFIG_SYSROOT_DIR for cross builds.
+	# Termux .pc files already contain full $TERMUX_PREFIX include/library paths,
+	# so applying a sysroot would duplicate prefixes (e.g. $TERMUX_PREFIX$TERMUX_PREFIX/include)
+	# and break CMake FindPkgConfig imported targets.
+	unset PKG_CONFIG_SYSROOT_DIR
+
 	# shellcheck source=/dev/null
 	source "$TERMUX_PKG_BUILDER_SCRIPT"
 	# Path to hostbuild marker, for use if package has hostbuild step
