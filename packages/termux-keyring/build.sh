@@ -25,14 +25,31 @@ termux_step_make_install() {
 	termux_download "$NEONIDE_KEY_URL" "$key_tmp" "$NEONIDE_KEY_SHA256"
 	install -Dm600 "$key_tmp" "$GPG_SHARE_DIR/neonide.gpg"
 
-	# Create symlinks under all GPG_DIRs to key files under GPG_SHARE_DIR
+	# Create symlinks under all GPG_DIRs to key files under GPG_SHARE_DIR.
+	# IMPORTANT: Use *relative* symlinks so they work inside bootstraps/rootfs
+	# and don't hardcode /data/data/<app>/... absolute paths.
 	for GPG_DIR in "$TERMUX_PREFIX/etc/apt/trusted.gpg.d" "$TERMUX_PREFIX/share/pacman/keyrings"; do
 		mkdir -p "$GPG_DIR"
 		# Delete keys which have been removed in newer version and their symlink target does not exist
 		find "$GPG_DIR" -xtype l -printf 'Deleting removed key: %p\n' -delete
 		for GPG_FILE in "$GPG_SHARE_DIR"/*.gpg; do
-			# Create or overwrite key symlink
-			ln -sf "$GPG_FILE" "$GPG_DIR/$(basename "$GPG_FILE")"
+			# Create or overwrite key symlink.
+			# Note: use a relative symlink so it works inside bootstraps/rootfs.
+			target_name="$(basename "$GPG_FILE")"
+			case "$GPG_DIR" in
+				*"/etc/apt/trusted.gpg.d")
+					# .../etc/apt/trusted.gpg.d -> .../share/termux-keyring
+					ln -sf "../../../share/termux-keyring/$target_name" "$GPG_DIR/$target_name"
+					;;
+				*"/share/pacman/keyrings")
+					# .../share/pacman/keyrings -> .../share/termux-keyring
+					ln -sf "../../termux-keyring/$target_name" "$GPG_DIR/$target_name"
+					;;
+				*)
+					# Fallback: absolute (shouldn't normally happen)
+					ln -sf "$GPG_FILE" "$GPG_DIR/$target_name"
+					;;
+			esac
 		done
 		# Creation of trusted files
 		if [[ "$GPG_DIR" == *"/pacman/"* ]]; then
