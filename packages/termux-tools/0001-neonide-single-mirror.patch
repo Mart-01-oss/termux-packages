@@ -177,8 +177,8 @@ index 34d0fde..60e18a6 100644
  bin_SCRIPTS += df getprop logcat ping ping6 pm settings top
  
 -CLEANFILES = $(bin_SCRIPTS)
-+NEONIDE_STATIC_SCRIPTS = pkg termux-change-repo
-+CLEANFILES = $(filter-out $(NEONIDE_STATIC_SCRIPTS),$(bin_SCRIPTS))
++NEONIDE_STATIC = pkg termux-change-repo
++CLEANFILES = $(filter-out $(NEONIDE_STATIC),$(bin_SCRIPTS))
  
  do_subst = sed -e "s%[@]TERMUX_PREFIX[@]%$(termux_prefix)%g" \
  	       -e "s%[@]TERMUX_APP_PACKAGE[@]%${termux_app_package}%g" \
