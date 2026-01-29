@@ -172,30 +172,96 @@ jobs:
             done < <(tr ' ' '\n' < scripts/neonide-bootstrap-packages.txt | sed '/^$/d')
           fi
 
-          # Load already-published binary packages into a set (best-effort).
-          # We treat presence in Packages as "already built" and skip unless FORCE_REBUILD=true.
+          # Load already-published binary packages into a set.
           #
-          # Sources:
-          # - Pages repo Packages (small debs)
-          # - GitHub Release flat repo Packages (large debs)
+          # IMPORTANT: do NOT assume "Package: X" means the .deb is available.
+          # We verify that each stanza's Filename exists:
+          # - for Pages repo stanzas: file exists in pages-repo git tree
+          # - for Release stanzas: asset exists in GitHub Release
+          # If the referenced file is missing, we treat it as NOT published so this
+          # workflow will rebuild it and the publish job can repair the repo.
           declare -A PUBLISHED=()
+          declare -A MISSING_PUBLISHED_FILE=()
+
+          parse_packages_stanzas() {
+            # Prints: <package>\t<filename>
+            awk 'BEGIN{RS="";FS="\n"}
+              {
+                pkg=""; fn="";
+                for(i=1;i<=NF;i++){
+                  if($i ~ /^Package: /){pkg=substr($i,10)}
+                  else if($i ~ /^Filename: / && fn==""){fn=substr($i,11)}
+                }
+                if(pkg!="" && fn!=""){print pkg "\t" fn}
+              }' "$1" 2>/dev/null || true
+          }
+
+          pages_git_has_path() {
+            local fn="$1"
+            fn="${fn#./}"
+            [ -z "$fn" ] && return 1
+            (cd pages-repo && git cat-file -e "HEAD:$fn" >/dev/null 2>&1)
+          }
+
+          RELEASE_BASE_URL="https://github.com/Mart-01-oss/pages/releases/download/Package"
+          release_asset_exists() {
+            local fn="$1" url code
+            fn="${fn#./}"
+            [ -z "$fn" ] && return 1
+            url="${RELEASE_BASE_URL%/}/$fn"
+            code="$(curl -L -o /dev/null -s -w '%{http_code}' "$url" || echo 000)"
+            case "$code" in
+              2*|3*) return 0;;
+              *) return 1;;
+            esac
+          }
+
           if [ "$FORCE_REBUILD" != "true" ]; then
+            # Pages repo: verify the referenced deb exists in pages git tree.
             if [ -f "$PAGES_PACKAGES" ]; then
-              while IFS= read -r p; do
-                [ -z "$p" ] && continue
-                PUBLISHED["$p"]=1
-              done < <((grep -E '^Package: ' "$PAGES_PACKAGES" || true) | sed -E 's/^Package: //' | sort -u)
+              while IFS=$'\t' read -r pkg fn; do
+                [ -z "$pkg" ] && continue
+                [ -z "$fn" ] && continue
+                [ -n "${EXCLUDE[$pkg]:-}" ] && continue
+                [ -n "${PUBLISHED[$pkg]:-}" ] && continue
+
+                if pages_git_has_path "$fn"; then
+                  PUBLISHED["$pkg"]=1
+                else
+                  MISSING_PUBLISHED_FILE["$pkg"]="pages:$fn"
+                fi
+              done < <(parse_packages_stanzas "$PAGES_PACKAGES")
             fi
 
-            # Fetch release Packages index (flat). This index is used for large debs.
+            # Release repo: verify the referenced deb exists as a Release asset.
             rm -f "$RELEASE_PACKAGES_FILE" || true
             if curl -LfsS "$RELEASE_PACKAGES_URL" -o "$RELEASE_PACKAGES_FILE" 2>/dev/null; then
-              while IFS= read -r p; do
-                [ -z "$p" ] && continue
-                PUBLISHED["$p"]=1
-              done < <((grep -E '^Package: ' "$RELEASE_PACKAGES_FILE" || true) | sed -E 's/^Package: //' | sort -u)
+              while IFS=$'\t' read -r pkg fn; do
+                [ -z "$pkg" ] && continue
+                [ -z "$fn" ] && continue
+                [ -n "${EXCLUDE[$pkg]:-}" ] && continue
+                [ -n "${PUBLISHED[$pkg]:-}" ] && continue
+
+                if release_asset_exists "$fn"; then
+                  PUBLISHED["$pkg"]=1
+                else
+                  MISSING_PUBLISHED_FILE["$pkg"]="release:$fn"
+                fi
+              done < <(parse_packages_stanzas "$RELEASE_PACKAGES_FILE")
             else
               echo "INFO: Could not fetch release Packages from $RELEASE_PACKAGES_URL (ok if no large repo yet)." >&2
+            fi
+
+            missing_count="${#MISSING_PUBLISHED_FILE[@]}"
+            if [ "$missing_count" -gt 0 ]; then
+              echo "WARNING: Detected $missing_count package(s) present in Packages index but missing the referenced .deb file." >&2
+              echo "WARNING: These packages will be treated as NOT published and will be rebuilt to repair the repo." >&2
+              c=0
+              for p in "${!MISSING_PUBLISHED_FILE[@]}"; do
+                echo "  - $p (${MISSING_PUBLISHED_FILE[$p]})" >&2
+                c=$((c+1))
+                [ "$c" -ge 50 ] && break
+              done
             fi
           fi
 

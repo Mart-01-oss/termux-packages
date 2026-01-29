@@ -74,10 +74,12 @@ termux_step_pre_configure() {
 
 termux_step_post_make_install() {
 	{
-		echo "# The main termux repository, with cloudflare cache"
-		echo "deb https://packages-cf.termux.dev/apt/termux-main/ stable main"
-		echo "# The main termux repository, without cloudflare cache"
-		echo "# deb https://packages.termux.dev/apt/termux-main/ stable main"
+		echo "# NeonIDE APT repo (pages)"
+		echo "deb https://mart-01-oss.github.io/pages/ stable main"
+		echo "# NeonIDE APT repo (GitHub Release flat repo)"
+		echo "deb https://github.com/Mart-01-oss/pages/releases/download/Package/ ./"
+		echo "# NeonIDE APT repo (Netlify mirror)"
+		echo "deb https://neonide-studio-apt.netlify.app/ stable main"
 	} > $TERMUX_PREFIX/etc/apt/sources.list
 
 	# apt-transport-tor
