@@ -11,8 +11,8 @@ on:
     - 'packages/**'
     - 'root-packages/**'
     - 'x11-packages/**'
- # schedule:
-  #  - cron: '30 * * * *'
+  schedule:
+    - cron: '30 * * * *'
   workflow_dispatch:
     inputs:
       packages:
