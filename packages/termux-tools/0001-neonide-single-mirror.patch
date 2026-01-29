@@ -1,0 +1,668 @@
+diff --git a/mirrors/Makefile.am b/mirrors/Makefile.am
+index 46163db..7b37716 100644
+--- a/mirrors/Makefile.am
++++ b/mirrors/Makefile.am
+@@ -1,121 +1,6 @@
+ # Default mirrors
+ pkgdata_MIRRORS = default
+ 
+-# Mirrors in Asia (excl. Chinese_Mainland and Russia)
+-pkgdata_ASIA_MIRRORS = mirror.albony.in mirror.bardia.tech          \
+-mirrors.cbrx.io linux.domainesia.com mirror.nevacloud.com            \
+-mirror.textcord.xyz tmx.xvx.my.id  mirrors.nguyenhoang.cloud         \
+-mirror.freedif.org mirror.twds.com.tw mirrors.in.sahilister.net       \
+-mirrors.saswata.cc termux.niranjan.co mirrors.ravidwivedi.in          \
+-mirror.jeonnam.school mirror.rinarin.dev mirrors.krnk.org             \
+-mirror.meowsmp.net 
+-
+-# Mirrors in Chinese Mainland
+-pkgdata_CHINESE_MAINLAND_MIRRORS = mirrors.tuna.tsinghua.edu.cn      \
+-mirror.iscas.ac.cn mirrors.nju.edu.cn mirrors.pku.edu.cn             \
+-mirrors.ustc.edu.cn mirrors.bfsu.edu.cn	mirrors.aliyun.com           \
+-mirrors.cqupt.edu.cn mirror.nyist.edu.cn mirrors.sau.edu.cn	         \
+-mirrors.sdu.edu.cn mirrors.sustech.edu.cn mirrors.zju.edu.cn         \
+-mirror.sjtu.edu.cn mirrors.hust.edu.cn mirrors.cernet.edu.cn
+-
+-# Mirrors in Europe
+-pkgdata_EUROPE_MIRRORS = grimler.se mirror.termux.dev			\
+-packages.termux.dev termux.librehat.com mirror.mwt.me			\
+-termux.mentality.rip mirrors.de.sahilister.net termux.cdn.lumito.net	\
+-termux.3san.dev mirror.accum.se			\
+-md.mirrors.hacktegic.com ftp.fau.de is.mirror.flokinet.net		\
+-ro.mirror.flokinet.net mirrors.medzik.dev mirrors.cfe.re		\
+-mirror.sunred.org mirror.autkin.net mirror.bouwhuis.network		\
+-mirror.leitecastro.com ftp.agdsn.de mirror.polido.pt			\
+-nl.mirror.flokinet.net
+-
+-# Mirrors in North America
+-pkgdata_NORTH_AMERICA_MIRRORS = plug-mirror.rcac.purdue.edu          \
+-dl.kcubeterm.com mirrors.utermux.dev mirror.fcix.net mirror.mwt.me   \
+-mirror.vern.cc mirror.csclub.uwaterloo.ca mirror.quantum5.ca		 \
+-termux.danyael.xyz gnlug.org
+-
+-# Mirrors in Oceania
+-pkgdata_OCEANIA_MIRRORS = mirrors.middlendian.com
+-
+-# Mirrors in Russia
+-pkgdata_RUSSIA_MIRRORS = mirror.mephi.ru repository.su
+-
+-
+-# Removed, renamed or moved mirrors
+-# Mirrors files are marked as conffiles and they are manually deleted
+-# in preinst step of package upgrade as conffiles removed in a newer
+-# version of the package are only deleted if package is purged and
+-# would otherwise be left as is after package upgrades and would still
+-# get used during mirror selection.
+-pkgdata_MIRRORS_REMOVED = \
+-asia/packages.nscdn.top \
+-china/mirrors.dgut.edu.cn \
+-china/mirrors.hit.edu.cn \
+-china/mirrors.njupt.edu.cn \
+-china/mirrors.scau.edu.cn \
+-china/mirror.iscas.ac.cn \
+-china/mirror.nyist.edu.cn \
+-china/mirror.sjtu.edu.cn \
+-china/mirrors.aliyun.com \
+-china/mirrors.bfsu.edu.cn \
+-china/mirrors.cqupt.edu.cn \
+-china/mirrors.nju.edu.cn \
+-china/mirrors.pku.edu.cn \
+-china/mirrors.qvq.net.cn \
+-china/mirrors.sau.edu.cn \
+-china/mirrors.sdu.edu.cn \
+-china/mirrors.sustech.edu.cn \
+-china/mirrors.tuna.tsinghua.edu.cn \
+-china/mirrors.ustc.edu.cn \
+-china/mirrors.zju.edu.cn \
+-chinese_mainland/mirrors.qvq.net.cn \
+-europe/cdn.lumito.net \
+-europe/mirror.termux.dv \
+-europe/termux.sahilister.in \
+-europe/termux.astra.in.ua \
+-north_america/packages.termux.dev \
+-oceania/mirrors.wale.id.au \
+-russia/mirror.surf \
+-south_america/mirrors.rda.run \
+-asia/mirrors.saswata.xyz \
+-asia/mirrors.omsinchan.ac.th
+-
+-
+-
+-define install-mirror-rule
+-install-$1:
+-	$$(MKDIR_P) $$(DESTDIR)$$(sysconfdir)/termux/mirrors/$1
+-	for f in $$(pkgdata_$2_MIRRORS); do \
+-		$(INSTALL) -m 644 $(srcdir)/$1/$$$$f \
+-		$(DESTDIR)$(sysconfdir)/termux/mirrors/$1; \
+-	done
+-endef
+-
+-define uninstall-mirror-rule
+-uninstall-$1:
+-	for f in $$(pkgdata_$2_MIRRORS); do \
+-		rm -f $(DESTDIR)$(sysconfdir)/termux/mirrors/$1/$$$$f; \
+-	done
+-	-rmdir $(DESTDIR)$(sysconfdir)/termux/mirrors/$1
+-endef
+-
+-$(eval $(call install-mirror-rule,asia,ASIA))
+-$(eval $(call install-mirror-rule,chinese_mainland,CHINESE_MAINLAND))
+-$(eval $(call install-mirror-rule,europe,EUROPE))
+-$(eval $(call install-mirror-rule,north_america,NORTH_AMERICA))
+-$(eval $(call install-mirror-rule,oceania,OCEANIA))
+-$(eval $(call install-mirror-rule,russia,RUSSIA))
+-
+-$(eval $(call uninstall-mirror-rule,asia,ASIA))
+-$(eval $(call uninstall-mirror-rule,chinese_mainland,CHINESE_MAINLAND))
+-$(eval $(call uninstall-mirror-rule,europe,EUROPE))
+-$(eval $(call uninstall-mirror-rule,north_america,NORTH_AMERICA))
+-$(eval $(call uninstall-mirror-rule,oceania,OCEANIA))
+-$(eval $(call uninstall-mirror-rule,russia,RUSSIA))
+-
+-
+-
+ install-default: $(pkgdata_MIRRORS)
+ 	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/termux/mirrors
+ 	for f in $(pkgdata_MIRRORS); do \
+@@ -129,25 +14,12 @@ uninstall-default:
+ 	done
+ 	-rmdir $(DESTDIR)$(sysconfdir)/termux/mirrors
+ 
+-
+-
+-uninstall-removed-mirrors:
+-	for f in $(pkgdata_MIRRORS_REMOVED); do \
+-		rm -f $(DESTDIR)$(sysconfdir)/termux/mirrors/$$f; \
+-	done
+-
+-
+-
+ create-deb-control-files:
+ 	sh -c "cd $$(dirname $(DESTDIR)$(sysconfdir)); find $$(basename $(DESTDIR)$(sysconfdir))/termux/mirrors -type f" >> ../conffiles;
+-	printf "# Delete removed mirrors\nfor f in %s; do\n    if test -f \"%s/etc/termux/mirrors/\$$f\"; then\n        echo \"Deleting removed mirror: \$$f\"; rm -f \"%s/etc/termux/mirrors/\$$f\";\n    fi\ndone" "$(pkgdata_MIRRORS_REMOVED)" "$(termux_prefix)" "$(termux_prefix)" >> ../preinst;
+-
+-
++	printf "\n# NeonIDE: keep only the default mirror (remove any legacy mirrors from old installs)\nif test -d \\\"%s/etc/termux/mirrors\\\"; then\n  find \\\"%s/etc/termux/mirrors\\\" -type f ! -name default -print0 2>/dev/null | xargs -0 -r rm -f\n  find \\\"%s/etc/termux/mirrors\\\" -type d ! -path \\\"%s/etc/termux/mirrors\\\" -print0 2>/dev/null | xargs -0 -r rmdir --ignore-fail-on-non-empty\nfi\n" "$(termux_prefix)" "$(termux_prefix)" "$(termux_prefix)" "$(termux_prefix)" >> ../preinst;
+ 
+-install-data-local: uninstall-removed-mirrors install-default install-asia install-chinese_mainland install-europe install-north_america install-oceania install-russia create-deb-control-files
++install-data-local: install-default create-deb-control-files
+ 
+-uninstall-local: uninstall-removed-mirrors uninstall-default uninstall-asia uninstall-chinese_mainland uninstall-europe uninstall-north_america uninstall-oceania uninstall-russia
++uninstall-local: uninstall-default
+ 
+-EXTRA_DIST = $(pkgdata_MIRRORS) $(pkgdata_ASIA_MIRRORS)		\
+-$(pkgdata_CHINESE_MAINLAND_MIRRORS) $(pkgdata_EUROPE_MIRRORS)		\
+-$(pkgdata_NORTH_AMERICA_MIRRORS) $(pkgdata_OCEANIA_MIRRORS)	
++EXTRA_DIST = $(pkgdata_MIRRORS)
+diff --git a/mirrors/default b/mirrors/default
+index 24795ac..a07bce4 100644
+--- a/mirrors/default
++++ b/mirrors/default
+@@ -1,6 +1,4 @@
+ # This file is sourced by pkg
+-# Cached (by cloudflare) variant of packages.termux.dev
+-WEIGHT=10
+-MAIN="https://packages-cf.termux.dev/apt/termux-main"
+-ROOT="https://packages-cf.termux.dev/apt/termux-root"
+-X11="https://packages-cf.termux.dev/apt/termux-x11"
++# NeonIDE single mirror (main only)
++WEIGHT=1
++MAIN="https://mart-01-oss.github.io/pages"
+diff --git a/scripts/pkg.in b/scripts/pkg.in
+index 65158cd..77fa6df 100644
+--- a/scripts/pkg.in
++++ b/scripts/pkg.in
+@@ -108,68 +108,11 @@ last_modified() {
+ 	echo $((now - mtime))
+ }
+ 
+-has_repo() {
+-	# Check if root-repo or x11-repo are installed
+-	repo="$1"
+-
+-	if [ -f "@TERMUX_PREFIX@/etc/apt/sources.list.d/$repo.list" ]; then
+-		echo true
+-	else
+-		echo false
+-	fi
+-}
+-
+ unset_mirror_variables() {
+ 	unset MAIN
+-	unset X11
+-	unset ROOT
+ 	unset WEIGHT
+ }
+ 
+-get_mirror_url() {
+-	local -r _mirror="$1"
+-	local -r _has_repo_x11="$2"
+-	local -r _has_repo_root="$3"
+-
+-	unset_mirror_variables
+-	source "$_mirror"
+-
+-	if [[ -z "${MAIN:-}" ]]; then
+-		echo "Warn: Ignoring mirror '$_mirror' without main channel url" >&2
+-		return 0
+-	elif [[ ! "${MAIN:-}" =~ ^https?://[^[:space:]]+$ ]]; then
+-		echo "Warn: Ignoring mirror '$_mirror' with invalid main channel url '${MAIN:-}'" >&2
+-		return 0
+-	fi
+-
+-	if [[ "$_has_repo_x11" == "true" ]]; then
+-		if [[ -z "${X11:-}" ]]; then
+-			echo "Warn: Ignoring mirror '$_mirror' without x11 channel url" >&2
+-			return 0
+-		elif [[ ! "${X11:-}" =~ ^https?://[^[:space:]]+$ ]]; then
+-			echo "Warn: Ignoring mirror '$_mirror' with invalid x11 channel url '${X11:-}'" >&2
+-			return 0
+-		fi
+-	fi
+-
+-	if [[ "$_has_repo_root" == "true" ]]; then
+-		if [[ -z "${ROOT:-}" ]]; then
+-			echo "Warn: Ignoring mirror '$_mirror' without root channel url" >&2
+-			return 0
+-		elif [[ ! "${ROOT:-}" =~ ^https?://[^[:space:]]+$ ]]; then
+-			echo "Warn: Ignoring mirror '$_mirror' with invalid root channel url '${ROOT:-}'" >&2
+-			return 0
+-		fi
+-	fi
+-
+-	if [[ ! "${WEIGHT:-}" =~ ^[0-9]+$ ]]; then
+-		echo "Warn: Ignoring mirror '$_mirror' with invalid weight '${WEIGHT:-}'" >&2
+-		return 0
+-	fi
+-
+-	echo "$MAIN"
+-}
+-
+ get_mirror_weight() {
+ 	unset_mirror_variables
+ 	source "$1"
+@@ -177,186 +120,34 @@ get_mirror_weight() {
+ }
+ 
+ select_mirror() {
+-	local current_mirror
+-	current_mirror=$(grep -oE 'https?://[^ ]+' <(grep -m 1 -E '^[[:space:]]*deb[[:space:]]+' @TERMUX_PREFIX@/etc/apt/sources.list) || true)
+-
+-	# Do not update mirror if $TERMUX_PKG_NO_MIRROR_SELECT was set.
+-	if [ -n "${TERMUX_PKG_NO_MIRROR_SELECT-}" ] && [ -n "$current_mirror" ]; then
+-		return
+-	fi
+-
+-	local default_repo="${MIRROR_BASE_DIR}/default"
+-
+-	if [ -d "@TERMUX_PREFIX@/etc/termux/chosen_mirrors" ]; then
+-		# Mirror group selected
+-		mirrors=($(find @TERMUX_PREFIX@/etc/termux/chosen_mirrors/ -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
+-	elif [ -f "@TERMUX_PREFIX@/etc/termux/chosen_mirrors" ]; then
+-		# Single mirror selected
+-		mirrors=("$(realpath @TERMUX_PREFIX@/etc/termux/chosen_mirrors)")
+-	elif [ -L "@TERMUX_PREFIX@/etc/termux/chosen_mirrors" ]; then
+-		# Broken symlink, use all mirrors
+-		mirrors=("${MIRROR_BASE_DIR}/default")
+-		mirrors+=($(find ${MIRROR_BASE_DIR}/{asia,chinese_mainland,europe,north_america,oceania,russia}/ -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
+-	else
+-		echo "No mirror or mirror group selected. You might want to select one by running 'termux-change-repo'"
+-		mirrors=("${MIRROR_BASE_DIR}/default")
+-		mirrors+=($(find ${MIRROR_BASE_DIR}/{asia,chinese_mainland,europe,north_america,oceania,russia}/ -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
++	# NeonIDE: single hardcoded default mirror.
++	# This avoids errors when regional mirror directories are removed.
++	local default_mirror_file="${MIRROR_BASE_DIR}/default"
++	if [ ! -f "$default_mirror_file" ]; then
++		echo "Error: mirror file missing: $default_mirror_file" >&2
++		exit 1
+ 	fi
+ 
+-	# Ensure `curl` can execute, otherwise all mirror checks will fail with `bad`.
++	# Ensure `curl` can execute, otherwise mirror check will fail.
+ 	check_command curl --version
+ 
+-	# Mirrors are rotated if 6 hours timeout has been passed or mirror is no longer accessible.
+-	local pkgcache="@TERMUX_CACHE_DIR@/apt/pkgcache.bin"
+-	if [ -e "$pkgcache" ] && (( $(last_modified "$pkgcache") <= 6 * 3600 )) && [ "$force_check_mirror" = "false" ]; then
+-		if [ -n "$current_mirror" ]; then
+-			echo "Checking availability of current mirror:"
+-			echo -n "[*] $current_mirror: "
+-			if check_mirror "$current_mirror"; then
+-				echo "ok"
+-				return
+-			else
+-				echo "bad"
+-			fi
+-		fi
+-	fi
+-
+-	# Test mirror availability, remove unaccessible mirrors from list.
+-	echo "Testing the available mirrors:"
+-	local parallel_jobs_max_count=10
+-
+-	if [[ ! "$parallel_jobs_max_count" =~ ^[0-9]+$ ]] || \
+-		[[ "$parallel_jobs_max_count" -lt 1 ]] || \
+-			[[ "$parallel_jobs_max_count" -gt 1000 ]]; then
+-		parallel_jobs_max_count=1
+-	fi
+-
+-	declare -a parallel_jobs_mirrors=()
+-	declare -a parallel_jobs_weights=()
+-	declare -a parallel_jobs_urls=()
+-	declare -a parallel_jobs_numbers=()
+-	declare -a parallel_jobs_pids=()
+-	declare -a parallel_jobs_return_values=()
+-
+-	local i j mirror url job_number job_pid return_value
+-	local total_mirrors=${#mirrors[@]}
+-	local parallel_jobs_current_count=1
+-
+-	has_repo_x11="$(has_repo x11)"
+-	has_repo_root="$(has_repo root)"
+-
+-	set +e
+-	i=0
+-	for mirror in "${!mirrors[@]}"; do
+-		url="$(get_mirror_url "${mirrors[$mirror]}" "$has_repo_x11" "$has_repo_root")"
+-		if [ -z "$url" ]; then
+-			unset "mirrors[$mirror]"
+-			continue
+-		fi
+-
+-		job_number=$parallel_jobs_current_count
+-		parallel_jobs_current_count=$((parallel_jobs_current_count + 1))
+-
+-		# Start mirror check in background
+-		check_mirror "$url" &
+-		job_pid=$!
+-
+-		parallel_jobs_mirrors=("${parallel_jobs_mirrors[@]}" "$mirror")
+-		parallel_jobs_weights=("${parallel_jobs_weights[@]}" "$(get_mirror_weight ${mirrors[$mirror]})")
+-		parallel_jobs_urls=("${parallel_jobs_urls[@]}" "$url")
+-		parallel_jobs_numbers=("${parallel_jobs_numbers[@]}" "$job_number")
+-		parallel_jobs_pids=("${parallel_jobs_pids[@]}" "$job_pid")
+-
+-		# If current job count has reached max value or is the last mirror, wait for already started jobs to finish
+-		if [ "$job_number" -ge $parallel_jobs_max_count ] || \
+-			[ "$i" -ge $((total_mirrors - 1)) ]; then
+-
+-			j=0
+-			# For pids of all jobs
+-			for job_pid in "${parallel_jobs_pids[@]}"; do
+-				# Wait for job with matching pid to return
+-				# echo "waiting for check_mirror job ${parallel_jobs_numbers[j]} for mirror \"${parallel_jobs_urls[j]}\" with pid ${parallel_jobs_pids[j]}"
+-				wait "$job_pid"
+-				return_value=$?
+-
+-				parallel_jobs_return_values=("${parallel_jobs_return_values[@]}" "$return_value")
+-				j=$((j + 1))
+-			done
+-
+-			j=0
+-			# For return_values of all jobs
+-			for return_value in "${parallel_jobs_return_values[@]}"; do
+-				echo -n "[*] (${parallel_jobs_weights[j]}) ${parallel_jobs_urls[j]}: "
+-				if [ "$return_value" -eq 0 ]; then
+-					echo "ok"
+-				else
+-					echo "bad"
+-					# echo "check_mirror job ${parallel_jobs_numbers[j]} for mirror \"${parallel_jobs_urls[j]}\" with pid ${parallel_jobs_pids[j]} failed with exit code $return_value"
+-					unset "mirrors[${parallel_jobs_mirrors[j]}]"
+-				fi
+-
+-				j=$((j + 1))
+-			done
+-
+-			# Reset job related variables
+-			parallel_jobs_current_count=1
+-			parallel_jobs_mirrors=()
+-			parallel_jobs_weights=()
+-			parallel_jobs_urls=()
+-			parallel_jobs_numbers=()
+-			parallel_jobs_pids=()
+-			parallel_jobs_return_values=()
+-		fi
+-
+-		i=$((i + 1))
+-	done
+-	set -e
+-
+-	# Build weighted array of valid mirrors
+-	declare -a weighted_mirrors
+-	local total_mirror_weight=0
+-	local weight
+-	for mirror in "${!mirrors[@]}"; do
+-		# Check if mirror was unset in parallel check
+-		if [ -z "${mirrors[$mirror]-}" ]; then
+-			continue
+-		fi
+-		weight="$(get_mirror_weight ${mirrors[$mirror]})"
+-		total_mirror_weight=$((total_mirror_weight + weight))
+-		j=0
+-		while [ "$j" -lt "$weight" ]; do
+-			weighted_mirrors+=(${mirrors[$mirror]})
+-			j=$((j + 1))
+-		done
+-	done
+-
+-	# Select random mirror
+-	local selected_mirror=""
+-	if ((total_mirror_weight > 0)); then
+-		local random_weight
+-		random_weight=$(( (RANDOM % total_mirror_weight + 1) - 1 ))
+-		echo "Picking mirror: (${random_weight}) ${weighted_mirrors[${random_weight}]}"
+-		selected_mirror="${weighted_mirrors[${random_weight}]}"
++	unset_mirror_variables
++	source "$default_mirror_file"
++	if [[ -z "${MAIN:-}" ]] || [[ ! "${MAIN:-}" =~ ^https?://[^[:space:]]+$ ]]; then
++		echo "Error: invalid MAIN url in $default_mirror_file" >&2
++		exit 1
+ 	fi
+ 
+-	if [ -n "$selected_mirror" ]; then
+-		(
+-			unset_mirror_variables
+-			source "$selected_mirror"
+-			echo "deb $MAIN stable main" > @TERMUX_PREFIX@/etc/apt/sources.list
+-			if [[ "$has_repo_x11" == "true" ]]; then
+-				echo "deb $X11 x11 main" > @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.list
+-			fi
+-			if [[ "$has_repo_root" == "true" ]]; then
+-				echo "deb $ROOT root stable" > @TERMUX_PREFIX@/etc/apt/sources.list.d/root.list
+-			fi
+-		)
+-	else
+-		# Should not happen unless there is some issue with
+-		# the script, or the mirror files
+-		echo "Error: None of the mirrors are accessible"
++	echo "Using mirror: $MAIN"
++	if ! check_mirror "$MAIN"; then
++		echo "Error: mirror is not accessible: $MAIN" >&2
+ 		exit 1
+ 	fi
++
++	mkdir -p @TERMUX_PREFIX@/etc/apt/sources.list.d
++	echo "deb $MAIN stable main" > @TERMUX_PREFIX@/etc/apt/sources.list
++	# Ensure x11/root are disabled even if their repo packages are installed.
++	rm -f @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.list @TERMUX_PREFIX@/etc/apt/sources.list.d/root.list
+ }
+ 
+ update_apt_cache() {
+diff --git a/scripts/termux-change-repo.in b/scripts/termux-change-repo.in
+index 6784288..373eeb3 100644
+--- a/scripts/termux-change-repo.in
++++ b/scripts/termux-change-repo.in
+@@ -5,145 +5,21 @@ source "@TERMUX_PREFIX@/bin/termux-setup-package-manager" || exit 1
+ 
+ MIRROR_BASE_DIR="@TERMUX_PREFIX@/etc/termux/mirrors"
+ 
+-if [ "$1" == "--help" ] || [ "$1" == "-help" ]; then
+-    echo "Script for choosing a group of mirrors to use."
+-    echo "All mirrors are listed at"
+-    echo "https://github.com/termux/termux-packages/wiki/Mirrors"
+-    exit 0
+-fi
+-
+-unlink_and_link() {
+-    MIRROR_GROUP="$1"
+-    if [ -L "@TERMUX_PREFIX@/etc/termux/chosen_mirrors" ]; then
+-        unlink "@TERMUX_PREFIX@/etc/termux/chosen_mirrors"
+-    fi
+-    ln -s "${MIRROR_GROUP}" "@TERMUX_PREFIX@/etc/termux/chosen_mirrors"
+-}
+-
+-select_repository_group() {
+-    MIRRORS=()
+-    MIRRORS+=("All mirrors" "All in the entire world" "on")
+-    MIRRORS+=("Mirrors in Asia" "All in Asia (excl. Chinese Mainland and Russia)" "off")
+-    MIRRORS+=("Mirrors in Chinese Mainland" "All in Chinese Mainland" "off")
+-    MIRRORS+=("Mirrors in Europe" "All in Europe" "off")
+-    MIRRORS+=("Mirrors in North America" "All in North America" "off")
+-    MIRRORS+=("Mirrors in Oceania" "All in Oceania" "off")
+-    MIRRORS+=("Mirrors in Russia" "All in Russia" "off")
+-
+-    local TEMPFILE="$(mktemp @TERMUX_PREFIX@/tmp/mirror.XXXXXX)"
+-    dialog \
+-        --title "termux-change-repo" --clear \
+-        --radiolist "Which group of mirrors do you want to use? Select with space." 0 0 0 \
+-        "${MIRRORS[@]}" --and-widget \
+-        2> "$TEMPFILE"
+-    retval=$?
+-    clear
+-
+-    case $retval in
+-        1)
+-            # Cancel pressed
+-            exit
+-            ;;
+-        255)
+-            # Esc pressed
+-            exit
+-            ;;
+-    esac
+-
+-    mirror_group="$(cat "$TEMPFILE")"
+-    rm "$TEMPFILE"
+-
+-    if [ "$mirror_group" == "Mirrors in Asia" ]; then
+-        echo "[*] Mirrors in Asia (excl. Chinese Mainland and Russia) selected"
+-        unlink_and_link ${MIRROR_BASE_DIR}/asia
+-
+-    elif [ "$mirror_group" == "Mirrors in Chinese Mainland" ]; then
+-        echo "[*] Mirrors in Chinese Mainland selected"
+-        unlink_and_link ${MIRROR_BASE_DIR}/chinese_mainland
+-
+-    elif [ "$mirror_group" == "Mirrors in Europe" ]; then
+-        echo "[*] Mirrors in Europe selected"
+-        unlink_and_link ${MIRROR_BASE_DIR}/europe
+-
+-    elif [ "$mirror_group" == "Mirrors in North America" ]; then
+-        echo "[*] Mirrors in North America selected"
+-        unlink_and_link ${MIRROR_BASE_DIR}/north_america
+-
+-    elif [ "$mirror_group" == "Mirrors in Oceania" ]; then
+-        echo "[*] Mirrors in Oceania selected"
+-        unlink_and_link ${MIRROR_BASE_DIR}/oceania
+-
+-    elif [ "$mirror_group" == "Mirrors in Russia" ]; then
+-        echo "[*] Mirrors in Russia selected"
+-        unlink_and_link ${MIRROR_BASE_DIR}/russia
+-
+-    elif [ "$mirror_group" == "All mirrors" ]; then
+-        echo "[*] All mirrors selected"
+-        unlink_and_link ${MIRROR_BASE_DIR}/all
+-
+-    else
+-        echo "[!] Error: unknown mirror group: '$1'. Exiting"
+-        exit 1
+-    fi
+-}
+-
+-get_mirror_url() {
+-    basename "$1"
+-}
+-
+-get_mirror_description() {
+-    head -n 2 "$1" | tail -n 1 | cut -d" " -f2-
+-}
+-
+-select_individual_mirror() {
+-    mirrors=($(find ${MIRROR_BASE_DIR}/{asia,chinese_mainland,europe,north_america,oceania,russia}/ -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
+-
+-    # Choose default mirror per default
+-    MIRRORS=("$(get_mirror_url "${MIRROR_BASE_DIR}/default")" "$(get_mirror_description "${MIRROR_BASE_DIR}/default")" "on")
+-    # Special handling of packages.termux.dev mirror to put it on top:
+-    MIRRORS+=("$(get_mirror_url "${MIRROR_BASE_DIR}/europe/packages.termux.dev")" "$(get_mirror_description "${MIRROR_BASE_DIR}/europe/packages.termux.dev")" "off")
+-    for mirror in ${mirrors[@]}; do
+-        mirror_url=$(get_mirror_url "$mirror")
+-        if [ "$mirror_url" == "packages.termux.dev" ]; then continue; fi
+-        MIRRORS+=("$mirror_url" "$(get_mirror_description "$mirror")" "off")
+-    done
+-
+-    local TEMPFILE="$(mktemp @TERMUX_PREFIX@/tmp/mirror.XXXXXX)"
+-    dialog \
+-        --title "termux-change-repo" --clear \
+-        --radiolist "Which mirror do you want to use? Select with space." 0 0 0 \
+-        "${MIRRORS[@]}" --and-widget \
+-        2> "$TEMPFILE"
+-    retval=$?
+-    clear
+-
+-    case $retval in
+-        1)
+-            # Cancel pressed
+-            exit
+-            ;;
+-        255)
+-            # Esc pressed
+-            exit
+-            ;;
+-    esac
+-
+-    mirror="$(cat "$TEMPFILE")"
+-
+-    echo "[*] Mirror $(get_mirror_url "$mirror") selected"
+-    unlink_and_link "$(find ${MIRROR_BASE_DIR} -name $mirror)"
+-    rm "$TEMPFILE"
+-}
+-
+ usage() {
+-   echo "Usage: termux-change-repo"
+-   echo ""
+-   echo "termux-change-repo is a utility used to simplify which mirror(s)"
+-   echo "pkg (our apt wrapper) should use."
++    echo "Usage: termux-change-repo"
++    echo
++    echo "NeonIDE: only a single default mirror is available."
++    echo "This command will select it."
+ }
+ 
++if [ "${1-}" = "--help" ] || [ "${1-}" = "-help" ]; then
++    usage
++    exit 0
++fi
++
+ if [ $# -gt 0 ]; then
+     usage
++    exit 1
+ fi
+ 
+ if ! command -v apt 1>/dev/null; then
+@@ -151,49 +27,14 @@ if ! command -v apt 1>/dev/null; then
+     exit 1
+ fi
+ 
+-if [ "$TERMUX_APP_PACKAGE_MANAGER" = "pacman" ]; then
+-    read -p "Warning: termux-change-repo can only change mirrors for apt, is that what you intended? [y|n] " -n 1 -r
+-    echo
+-    [[ ${REPLY} =~ ^[Nn]$ ]] && exit
+-fi
+-
+-mkdir -p "@TERMUX_PREFIX@/tmp" || exit $?
+-
+-TEMPFILE="$(mktemp @TERMUX_PREFIX@/tmp/termux-change-repo.XXXXXX)"
+-
+-MODES=()
+-MODES+=("Mirror group" "Rotate between several mirrors (recommended)" "on")
+-MODES+=("Single mirror" "Choose a single mirror to use" "off")
+-dialog \
+-    --title "termux-change-repo" --clear \
+-    --radiolist "Do you want to choose a mirror group or a single mirror? Select with space." 0 0 0 \
+-    "${MODES[@]}" --and-widget \
+-    2> "$TEMPFILE"
+-retval=$?
+-clear
+-
+-case $retval in
+-    0)
+-        case "$(cat $TEMPFILE)" in
+-        "Mirror group")
+-            select_repository_group
+-            ;;
+-        "Single mirror")
+-            select_individual_mirror
+-            ;;
+-        esac
+-        ;;
+-    1)
+-        # Cancel pressed
+-        exit
+-        ;;
+-    255)
+-        # Esc pressed
+-        exit
+-        ;;
+-esac
++mkdir -p "@TERMUX_PREFIX@/etc/termux" || exit $?
+ 
+-rm "$TEMPFILE"
++# Store selected mirror as a symlink to the default mirror file.
++# pkg supports file/directory/symlink; using a symlink keeps compatibility
++# with existing Termux behavior.
++rm -f "@TERMUX_PREFIX@/etc/termux/chosen_mirrors" 2>/dev/null || true
++ln -sf "${MIRROR_BASE_DIR}/default" "@TERMUX_PREFIX@/etc/termux/chosen_mirrors"
+ 
++echo "[*] Selected NeonIDE mirror (default)."
+ echo "[*] pkg --check-mirror update"
+ TERMUX_APP_PACKAGE_MANAGER=apt pkg --check-mirror update
+
