@@ -22,7 +22,7 @@ jobs:
           - aarch64
     steps:
       - name: Git clone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Create bootstrap archive
         run: ./scripts/generate-bootstraps.sh --architectures ${{ matrix.arch }} --repository https://mart-01-oss.github.io/pages
       - name: Store artifacts
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git clone
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - name: Fetch bootstrap archives
