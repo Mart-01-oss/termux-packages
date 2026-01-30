@@ -1,15 +1,15 @@
 diff --git a/mirrors/Makefile.am b/mirrors/Makefile.am
-index 7904f40..7b37716 100644
+index 46163db..7b37716 100644
 --- a/mirrors/Makefile.am
 +++ b/mirrors/Makefile.am
-@@ -1,129 +1,6 @@
+@@ -1,121 +1,6 @@
  # Default mirrors
  pkgdata_MIRRORS = default
  
 -# Mirrors in Asia (excl. Chinese_Mainland and Russia)
--pkgdata_ASIA_MIRRORS = mirror.nag.albony.in \
+-pkgdata_ASIA_MIRRORS = mirror.albony.in mirror.bardia.tech          \
 -mirrors.cbrx.io linux.domainesia.com mirror.nevacloud.com            \
--tmx.xvx.my.id  mirrors.nguyenhoang.cloud         \
+-mirror.textcord.xyz tmx.xvx.my.id  mirrors.nguyenhoang.cloud         \
 -mirror.freedif.org mirror.twds.com.tw mirrors.in.sahilister.net       \
 -mirrors.saswata.cc termux.niranjan.co mirrors.ravidwivedi.in          \
 -mirror.jeonnam.school mirror.rinarin.dev mirrors.krnk.org             \
@@ -24,19 +24,19 @@ index 7904f40..7b37716 100644
 -mirror.sjtu.edu.cn mirrors.hust.edu.cn mirrors.cernet.edu.cn
 -
 -# Mirrors in Europe
--pkgdata_EUROPE_MIRRORS = grimler.se			\
--packages.termux.dev termux.librehat.com \
+-pkgdata_EUROPE_MIRRORS = grimler.se mirror.termux.dev			\
+-packages.termux.dev termux.librehat.com mirror.mwt.me			\
 -termux.mentality.rip mirrors.de.sahilister.net termux.cdn.lumito.net	\
 -termux.3san.dev mirror.accum.se			\
 -md.mirrors.hacktegic.com ftp.fau.de is.mirror.flokinet.net		\
--ro.mirror.flokinet.net mirrors.medzik.dev	\
+-ro.mirror.flokinet.net mirrors.medzik.dev mirrors.cfe.re		\
 -mirror.sunred.org mirror.autkin.net mirror.bouwhuis.network		\
--mirror.leitecastro.com ftp.agdsn.de	ftp.icm.edu.pl		        \
--nl.mirror.flokinet.net mirror.cutie.dating
+-mirror.leitecastro.com ftp.agdsn.de mirror.polido.pt			\
+-nl.mirror.flokinet.net
 -
 -# Mirrors in North America
 -pkgdata_NORTH_AMERICA_MIRRORS = plug-mirror.rcac.purdue.edu          \
--mirrors.utermux.dev mirror.fcix.net mirror.mwt.me   \
+-dl.kcubeterm.com mirrors.utermux.dev mirror.fcix.net mirror.mwt.me   \
 -mirror.vern.cc mirror.csclub.uwaterloo.ca mirror.quantum5.ca		 \
 -termux.danyael.xyz gnlug.org
 -
@@ -54,25 +54,21 @@ index 7904f40..7b37716 100644
 -# would otherwise be left as is after package upgrades and would still
 -# get used during mirror selection.
 -pkgdata_MIRRORS_REMOVED = \
--asia/mirror.bardia.tech \
--asia/mirrors.omsinchan.ac.th \
--asia/mirrors.saswata.xyz \
--asia/mirror.textcord.xyz \
 -asia/packages.nscdn.top \
+-china/mirrors.dgut.edu.cn \
+-china/mirrors.hit.edu.cn \
+-china/mirrors.njupt.edu.cn \
+-china/mirrors.scau.edu.cn \
 -china/mirror.iscas.ac.cn \
 -china/mirror.nyist.edu.cn \
+-china/mirror.sjtu.edu.cn \
 -china/mirrors.aliyun.com \
 -china/mirrors.bfsu.edu.cn \
 -china/mirrors.cqupt.edu.cn \
--china/mirrors.dgut.edu.cn \
--china/mirrors.hit.edu.cn \
--china/mirror.sjtu.edu.cn \
 -china/mirrors.nju.edu.cn \
--china/mirrors.njupt.edu.cn \
 -china/mirrors.pku.edu.cn \
 -china/mirrors.qvq.net.cn \
 -china/mirrors.sau.edu.cn \
--china/mirrors.scau.edu.cn \
 -china/mirrors.sdu.edu.cn \
 -china/mirrors.sustech.edu.cn \
 -china/mirrors.tuna.tsinghua.edu.cn \
@@ -80,19 +76,15 @@ index 7904f40..7b37716 100644
 -china/mirrors.zju.edu.cn \
 -chinese_mainland/mirrors.qvq.net.cn \
 -europe/cdn.lumito.net \
--europe/mirror.mwt.me \
--europe/mirror.polido.pt \
--europe/mirrors.cfe.re \
--europe/mirror.termux.dev \
 -europe/mirror.termux.dv \
--europe/termux.astra.in.ua \
 -europe/termux.sahilister.in \
--north_america/dl.kcubeterm.com \
+-europe/termux.astra.in.ua \
 -north_america/packages.termux.dev \
 -oceania/mirrors.wale.id.au \
 -russia/mirror.surf \
 -south_america/mirrors.rda.run \
--asia/mirror.albony.in
+-asia/mirrors.saswata.xyz \
+-asia/mirrors.omsinchan.ac.th
 -
 -
 -
@@ -132,7 +124,7 @@ index 7904f40..7b37716 100644
  install-default: $(pkgdata_MIRRORS)
  	$(MKDIR_P) $(DESTDIR)$(sysconfdir)/termux/mirrors
  	for f in $(pkgdata_MIRRORS); do \
-@@ -137,25 +14,12 @@ uninstall-default:
+@@ -129,25 +14,12 @@ uninstall-default:
  	done
  	-rmdir $(DESTDIR)$(sysconfdir)/termux/mirrors
  
@@ -163,14 +155,12 @@ index 7904f40..7b37716 100644
 -$(pkgdata_NORTH_AMERICA_MIRRORS) $(pkgdata_OCEANIA_MIRRORS)	
 +EXTRA_DIST = $(pkgdata_MIRRORS)
 diff --git a/mirrors/default b/mirrors/default
-index 6da2d06..6035fdf 100644
+index 24795ac..6035fdf 100644
 --- a/mirrors/default
 +++ b/mirrors/default
-@@ -1,8 +1,7 @@
+@@ -1,6 +1,7 @@
  # This file is sourced by pkg
--# Termux origin repo. Behind cloudflare cache.
--# Termux | https://packages.termux.dev
--# Termux origin repo behind cloudflare cache.
+-# Cached (by cloudflare) variant of packages.termux.dev
 -WEIGHT=10
 -MAIN="https://packages-cf.termux.dev/apt/termux-main"
 -ROOT="https://packages-cf.termux.dev/apt/termux-root"
@@ -182,10 +172,10 @@ index 6da2d06..6035fdf 100644
 +MAIN="https://github.com/Mart-01-oss/pages/releases/download/Package"
 +SUITE="./"
 diff --git a/scripts/pkg.in b/scripts/pkg.in
-index 9d7b2ed..8e1c4e0 100644
+index 65158cd..818ef9c 100644
 --- a/scripts/pkg.in
 +++ b/scripts/pkg.in
-@@ -69,13 +69,17 @@ check_mirror() {
+@@ -68,13 +68,17 @@ check_mirror() {
  	local mirror="${1%/}"
  	local timeout="${2-5}"
  
@@ -210,40 +200,29 @@ index 9d7b2ed..8e1c4e0 100644
  }
  
  check_command() {
-@@ -126,9 +130,8 @@ has_repo() {
- 
- unset_mirror_variables() {
- 	unset MAIN
--	unset X11
--	unset ROOT
+@@ -124,6 +128,7 @@ unset_mirror_variables() {
+ 	unset X11
+ 	unset ROOT
  	unset WEIGHT
 +	unset SUITE
  }
  
  get_mirror_url() {
-@@ -183,210 +186,56 @@ get_mirror_weight() {
+@@ -177,186 +182,57 @@ get_mirror_weight() {
  }
  
  select_mirror() {
 -	local current_mirror
--	if [ -f "@TERMUX_PREFIX@/etc/apt/sources.list.d/main.sources" ]; then
--		current_mirror=$(grep -oE 'https?://[^ ]+' <(grep -m 1 -E '^[[:space:]]*URIs:[[:space:]]+' "@TERMUX_PREFIX@/etc/apt/sources.list.d/main.sources") || :)
--	elif [ -f "@TERMUX_PREFIX@/etc/apt/sources.list" ]; then
--		current_mirror=$(grep -oE 'https?://[^ ]+' <(grep -m 1 -E '^[[:space:]]*deb[[:space:]]+' "@TERMUX_PREFIX@/etc/apt/sources.list") || :)
+-	current_mirror=$(grep -oE 'https?://[^ ]+' <(grep -m 1 -E '^[[:space:]]*deb[[:space:]]+' @TERMUX_PREFIX@/etc/apt/sources.list) || true)
 +	# NeonIDE: single hardcoded default mirror.
 +	# Only write sources if no repo is configured yet.
 +	local sources_file="@TERMUX_PREFIX@/etc/apt/sources.list"
 +	local deb822_file="@TERMUX_PREFIX@/etc/apt/sources.list.d/main.sources"
-+
-+	# If deb822 main.sources exists and has a URIs entry, treat as configured.
-+	if [ -f "$deb822_file" ] && grep -qE '^[[:space:]]*URIs:[[:space:]]*https?://' "$deb822_file"; then
-+		return
- 	fi
  
 -	# Do not update mirror if $TERMUX_PKG_NO_MIRROR_SELECT was set.
 -	if [ -n "${TERMUX_PKG_NO_MIRROR_SELECT-}" ] && [ -n "$current_mirror" ]; then
-+	# If legacy sources.list has any non-comment content, treat as configured.
-+	if [ -f "$sources_file" ] && grep -qE '^[[:space:]]*[^#[:space:]]' "$sources_file"; then
++	# If deb822 main.sources exists and has a URIs entry, treat as configured.
++	if [ -f "$deb822_file" ] && grep -qE '^[[:space:]]*URIs:[[:space:]]*https?://' "$deb822_file"; then
  		return
  	fi
  
@@ -251,27 +230,26 @@ index 9d7b2ed..8e1c4e0 100644
 -
 -	if [ -d "@TERMUX_PREFIX@/etc/termux/chosen_mirrors" ]; then
 -		# Mirror group selected
--		mirrors=($(find "@TERMUX_PREFIX@/etc/termux/chosen_mirrors/" -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
+-		mirrors=($(find @TERMUX_PREFIX@/etc/termux/chosen_mirrors/ -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
 -	elif [ -f "@TERMUX_PREFIX@/etc/termux/chosen_mirrors" ]; then
 -		# Single mirror selected
--		mirrors=("$(realpath "@TERMUX_PREFIX@/etc/termux/chosen_mirrors")")
+-		mirrors=("$(realpath @TERMUX_PREFIX@/etc/termux/chosen_mirrors)")
 -	elif [ -L "@TERMUX_PREFIX@/etc/termux/chosen_mirrors" ]; then
 -		# Broken symlink, use all mirrors
 -		mirrors=("${MIRROR_BASE_DIR}/default")
--		mirrors+=($(find "${MIRROR_BASE_DIR}"/{asia,chinese_mainland,europe,north_america,oceania,russia}/ -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
+-		mirrors+=($(find ${MIRROR_BASE_DIR}/{asia,chinese_mainland,europe,north_america,oceania,russia}/ -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
 -	else
 -		echo "No mirror or mirror group selected. You might want to select one by running 'termux-change-repo'"
 -		mirrors=("${MIRROR_BASE_DIR}/default")
 -		mirrors+=($(find ${MIRROR_BASE_DIR}/{asia,chinese_mainland,europe,north_america,oceania,russia}/ -type f ! -name "*\.dpkg-old" ! -name "*\.dpkg-new" ! -name "*~"))
-+	local default_mirror_file="${MIRROR_BASE_DIR}/default"
-+	if [ ! -f "$default_mirror_file" ]; then
-+		echo "Error: mirror file missing: $default_mirror_file" >&2
-+		exit 1
++	# If legacy sources.list has any non-comment content, treat as configured.
++	if [ -f "$sources_file" ] && grep -qE '^[[:space:]]*[^#[:space:]]' "$sources_file"; then
++		return
  	fi
  
 -	# Ensure `curl` can execute, otherwise all mirror checks will fail with `bad`.
- 	check_command curl --version
- 
+-	check_command curl --version
+-
 -	# Mirrors are rotated if 6 hours timeout has been passed or mirror is no longer accessible.
 -	local pkgcache="@TERMUX_CACHE_DIR@/apt/pkgcache.bin"
 -	if [ -e "$pkgcache" ] && (( $(last_modified "$pkgcache") <= 6 * 3600 )) && [ "$force_check_mirror" = "false" ]; then
@@ -285,26 +263,26 @@ index 9d7b2ed..8e1c4e0 100644
 -				echo "bad"
 -			fi
 -		fi
-+	unset_mirror_variables
-+	# shellcheck source=/dev/null
-+	source "$default_mirror_file"
-+	if [[ -z "${MAIN:-}" ]] || [[ ! "${MAIN:-}" =~ ^https?://[^[:space:]]+$ ]]; then
-+		echo "Error: invalid MAIN url in $default_mirror_file" >&2
++	local default_mirror_file="${MIRROR_BASE_DIR}/default"
++	if [ ! -f "$default_mirror_file" ]; then
++		echo "Error: mirror file missing: $default_mirror_file" >&2
 +		exit 1
  	fi
  
 -	# Test mirror availability, remove unaccessible mirrors from list.
 -	echo "Testing the available mirrors:"
 -	local parallel_jobs_max_count=10
--
++	check_command curl --version
+ 
 -	if [[ ! "$parallel_jobs_max_count" =~ ^[0-9]+$ ]] || \
 -		[[ "$parallel_jobs_max_count" -lt 1 ]] || \
 -			[[ "$parallel_jobs_max_count" -gt 1000 ]]; then
 -		parallel_jobs_max_count=1
-+	local suite="${SUITE:-stable}"
-+	echo "Using mirror: $MAIN (suite: $suite)"
-+	if ! check_mirror "$MAIN"; then
-+		echo "Error: mirror is not accessible: $MAIN" >&2
++	unset_mirror_variables
++	# shellcheck source=/dev/null
++	source "$default_mirror_file"
++	if [[ -z "${MAIN:-}" ]] || [[ ! "${MAIN:-}" =~ ^https?://[^[:space:]]+$ ]]; then
++		echo "Error: invalid MAIN url in $default_mirror_file" >&2
 +		exit 1
  	fi
  
@@ -330,7 +308,12 @@ index 9d7b2ed..8e1c4e0 100644
 -			unset "mirrors[$mirror]"
 -			continue
 -		fi
-+	mkdir -p @TERMUX_PREFIX@/etc/apt/sources.list.d
++	local suite="${SUITE:-stable}"
++	echo "Using mirror: $MAIN (suite: $suite)"
++	if ! check_mirror "$MAIN"; then
++		echo "Error: mirror is not accessible: $MAIN" >&2
++		exit 1
++	fi
  
 -		job_number=$parallel_jobs_current_count
 -		parallel_jobs_current_count=$((parallel_jobs_current_count + 1))
@@ -385,8 +368,7 @@ index 9d7b2ed..8e1c4e0 100644
 -			parallel_jobs_pids=()
 -			parallel_jobs_return_values=()
 -		fi
-+	# Ensure legacy sources.list exists (and deb822 main.sources removed so apt doesn't prefer it).
-+	rm -f "$deb822_file"
++	mkdir -p @TERMUX_PREFIX@/etc/apt/sources.list.d
  
 -		i=$((i + 1))
 -	done
@@ -418,50 +400,33 @@ index 9d7b2ed..8e1c4e0 100644
 -		echo "Picking mirror: (${random_weight}) ${weighted_mirrors[${random_weight}]}"
 -		selected_mirror="${weighted_mirrors[${random_weight}]}"
 -	fi
--
--	if [ -z "$selected_mirror" ]; then
++	# Remove deb822 file so apt uses sources.list consistently.
++	rm -f "$deb822_file"
+ 
+-	if [ -n "$selected_mirror" ]; then
+-		(
+-			unset_mirror_variables
+-			source "$selected_mirror"
+-			echo "deb $MAIN stable main" > @TERMUX_PREFIX@/etc/apt/sources.list
+-			if [[ "$has_repo_x11" == "true" ]]; then
+-				echo "deb $X11 x11 main" > @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.list
+-			fi
+-			if [[ "$has_repo_root" == "true" ]]; then
+-				echo "deb $ROOT root stable" > @TERMUX_PREFIX@/etc/apt/sources.list.d/root.list
+-			fi
+-		)
++	if [ "$suite" = './' ] || [ "$suite" = '.' ]; then
++		echo "deb $MAIN ./" > "$sources_file"
+ 	else
 -		# Should not happen unless there is some issue with
 -		# the script, or the mirror files
 -		echo "Error: None of the mirrors are accessible"
 -		exit 1
-+	if [ "$suite" = './' ] || [ "$suite" = '.' ]; then
-+		echo "deb $MAIN ./" > "$sources_file"
-+	else
 +		echo "deb $MAIN stable main" > "$sources_file"
  	fi
- 
--	(
--		unset_mirror_variables
--		# shellcheck source=/dev/null
--		source "$selected_mirror"
--
--		case "$(has_repo main)" in
--			'deb822')
--				sed -i -e "s|URIs:.*|$(sed_escape_replacement "URIs: $MAIN")|" \
--				"@TERMUX_PREFIX@/etc/apt/sources.list.d/main.sources"
--			;;
--			# There should always be a main repo, so fallback to
--			# creating sources.list if the `main.sources` file is missing
--			*) echo "deb $MAIN stable main" > "@TERMUX_PREFIX@/etc/apt/sources.list";;
--		esac
--
--		case "${has_repo_x11:-}" in
--			'deb822')
--				sed -i -e "s|URIs:.*|$(sed_escape_replacement "URIs: $X11")|" \
--				"@TERMUX_PREFIX@/etc/apt/sources.list.d/x11.sources"
--			;;
--			'legacy') echo "deb $X11 x11 main" > "@TERMUX_PREFIX@/etc/apt/sources.list.d/x11.list";;
--		esac
--
--		case "${has_repo_root:-}" in
--			'deb822')
--				sed -i -e "s|URIs:.*|$(sed_escape_replacement "URIs: $ROOT")|" \
--				"@TERMUX_PREFIX@/etc/apt/sources.list.d/root.sources"
--			;;
--			'legacy') echo "deb $ROOT root stable" > "@TERMUX_PREFIX@/etc/apt/sources.list.d/root.list";;
--		esac
--	)
-+	rm -f @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.list @TERMUX_PREFIX@/etc/apt/sources.list.d/root.list 	      @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.sources @TERMUX_PREFIX@/etc/apt/sources.list.d/root.sources
++
++	rm -f @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.list @TERMUX_PREFIX@/etc/apt/sources.list.d/root.list \
++	      @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.sources @TERMUX_PREFIX@/etc/apt/sources.list.d/root.sources
  }
  
  update_apt_cache() {

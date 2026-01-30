@@ -21,6 +21,21 @@ TERMUX_PKG_DEPENDS="bzip2, coreutils, curl, dash, diffutils, findutils, gawk, gr
 # Optional packages that are distributed as part of bootstrap archives.
 TERMUX_PKG_RECOMMENDS="ed, dos2unix, inetutils, net-tools, patch, unzip"
 
+
+# NeonIDE note: termux_step_patch_package in termux-packages applies sed substitutions
+# to patch files (replacing @TERMUX_PREFIX@ etc). termux-tools sources themselves
+# intentionally contain these @...@ templates, so substituting patch content breaks
+# patch applicability. Override patch step for this package to apply patches verbatim.
+termux_step_patch_package() {
+	cd "$TERMUX_PKG_SRCDIR"
+	shopt -s nullglob
+	for patch in "$TERMUX_PKG_BUILDER_DIR"/*.patch "$TERMUX_PKG_BUILDER_DIR"/*.patch$TERMUX_ARCH_BITS; do
+		echo "Applying patch (no-subst): $(basename "$patch")"
+		patch --silent -p1 < "$patch"
+	done
+	shopt -u nullglob
+}
+
 termux_step_pre_configure() {
 	autoreconf -vfi
 }
