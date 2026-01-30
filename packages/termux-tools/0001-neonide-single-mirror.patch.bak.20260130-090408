@@ -163,10 +163,10 @@ index 7904f40..7b37716 100644
 -$(pkgdata_NORTH_AMERICA_MIRRORS) $(pkgdata_OCEANIA_MIRRORS)	
 +EXTRA_DIST = $(pkgdata_MIRRORS)
 diff --git a/mirrors/default b/mirrors/default
-index 6da2d06..6035fdf 100644
+index 6da2d06..f925cf9 100644
 --- a/mirrors/default
 +++ b/mirrors/default
-@@ -1,8 +1,7 @@
+@@ -1,8 +1,5 @@
  # This file is sourced by pkg
 -# Termux origin repo. Behind cloudflare cache.
 -# Termux | https://packages.termux.dev
@@ -175,14 +175,12 @@ index 6da2d06..6035fdf 100644
 -MAIN="https://packages-cf.termux.dev/apt/termux-main"
 -ROOT="https://packages-cf.termux.dev/apt/termux-root"
 -X11="https://packages-cf.termux.dev/apt/termux-x11"
-+# NeonIDE single mirror (flat repo).
-+# Mart-01-oss Pages | https://github.com/Mart-01-oss/pages
-+# GitHub Releases APT-style flat repository (suite: ./)
++# NeonIDE single mirror (flat repo)
 +WEIGHT=1
 +MAIN="https://github.com/Mart-01-oss/pages/releases/download/Package"
 +SUITE="./"
 diff --git a/scripts/pkg.in b/scripts/pkg.in
-index 9d7b2ed..8e1c4e0 100644
+index 9d7b2ed..d43df68 100644
 --- a/scripts/pkg.in
 +++ b/scripts/pkg.in
 @@ -69,13 +69,17 @@ check_mirror() {
@@ -221,7 +219,7 @@ index 9d7b2ed..8e1c4e0 100644
  }
  
  get_mirror_url() {
-@@ -183,210 +186,56 @@ get_mirror_weight() {
+@@ -183,210 +186,53 @@ get_mirror_weight() {
  }
  
  select_mirror() {
@@ -230,21 +228,19 @@ index 9d7b2ed..8e1c4e0 100644
 -		current_mirror=$(grep -oE 'https?://[^ ]+' <(grep -m 1 -E '^[[:space:]]*URIs:[[:space:]]+' "@TERMUX_PREFIX@/etc/apt/sources.list.d/main.sources") || :)
 -	elif [ -f "@TERMUX_PREFIX@/etc/apt/sources.list" ]; then
 -		current_mirror=$(grep -oE 'https?://[^ ]+' <(grep -m 1 -E '^[[:space:]]*deb[[:space:]]+' "@TERMUX_PREFIX@/etc/apt/sources.list") || :)
-+	# NeonIDE: single hardcoded default mirror.
-+	# Only write sources if no repo is configured yet.
-+	local sources_file="@TERMUX_PREFIX@/etc/apt/sources.list"
-+	local deb822_file="@TERMUX_PREFIX@/etc/apt/sources.list.d/main.sources"
-+
-+	# If deb822 main.sources exists and has a URIs entry, treat as configured.
-+	if [ -f "$deb822_file" ] && grep -qE '^[[:space:]]*URIs:[[:space:]]*https?://' "$deb822_file"; then
-+		return
- 	fi
- 
+-	fi
+-
 -	# Do not update mirror if $TERMUX_PKG_NO_MIRROR_SELECT was set.
 -	if [ -n "${TERMUX_PKG_NO_MIRROR_SELECT-}" ] && [ -n "$current_mirror" ]; then
-+	# If legacy sources.list has any non-comment content, treat as configured.
-+	if [ -f "$sources_file" ] && grep -qE '^[[:space:]]*[^#[:space:]]' "$sources_file"; then
- 		return
+-		return
++	# NeonIDE: single hardcoded default mirror.
++	# Only write sources.list if it is empty (or contains no active entries).
++	local sources_file="@TERMUX_PREFIX@/etc/apt/sources.list"
++	if [ -f "$sources_file" ]; then
++		# If there is any non-empty, non-comment line, treat sources.list as configured.
++		if grep -qE '^[[:space:]]*[^#[:space:]]' "$sources_file"; then
++			return
++		fi
  	fi
  
 -	local default_repo="${MIRROR_BASE_DIR}/default"
@@ -270,6 +266,7 @@ index 9d7b2ed..8e1c4e0 100644
  	fi
  
 -	# Ensure `curl` can execute, otherwise all mirror checks will fail with `bad`.
++	# Ensure `curl` can execute, otherwise mirror check will fail.
  	check_command curl --version
  
 -	# Mirrors are rotated if 6 hours timeout has been passed or mirror is no longer accessible.
@@ -285,14 +282,8 @@ index 9d7b2ed..8e1c4e0 100644
 -				echo "bad"
 -			fi
 -		fi
-+	unset_mirror_variables
-+	# shellcheck source=/dev/null
-+	source "$default_mirror_file"
-+	if [[ -z "${MAIN:-}" ]] || [[ ! "${MAIN:-}" =~ ^https?://[^[:space:]]+$ ]]; then
-+		echo "Error: invalid MAIN url in $default_mirror_file" >&2
-+		exit 1
- 	fi
- 
+-	fi
+-
 -	# Test mirror availability, remove unaccessible mirrors from list.
 -	echo "Testing the available mirrors:"
 -	local parallel_jobs_max_count=10
@@ -301,10 +292,11 @@ index 9d7b2ed..8e1c4e0 100644
 -		[[ "$parallel_jobs_max_count" -lt 1 ]] || \
 -			[[ "$parallel_jobs_max_count" -gt 1000 ]]; then
 -		parallel_jobs_max_count=1
-+	local suite="${SUITE:-stable}"
-+	echo "Using mirror: $MAIN (suite: $suite)"
-+	if ! check_mirror "$MAIN"; then
-+		echo "Error: mirror is not accessible: $MAIN" >&2
++	unset_mirror_variables
++	# shellcheck source=/dev/null
++	source "$default_mirror_file"
++	if [[ -z "${MAIN:-}" ]] || [[ ! "${MAIN:-}" =~ ^https?://[^[:space:]]+$ ]]; then
++		echo "Error: invalid MAIN url in $default_mirror_file" >&2
 +		exit 1
  	fi
  
@@ -330,8 +322,7 @@ index 9d7b2ed..8e1c4e0 100644
 -			unset "mirrors[$mirror]"
 -			continue
 -		fi
-+	mkdir -p @TERMUX_PREFIX@/etc/apt/sources.list.d
- 
+-
 -		job_number=$parallel_jobs_current_count
 -		parallel_jobs_current_count=$((parallel_jobs_current_count + 1))
 -
@@ -385,9 +376,7 @@ index 9d7b2ed..8e1c4e0 100644
 -			parallel_jobs_pids=()
 -			parallel_jobs_return_values=()
 -		fi
-+	# Ensure legacy sources.list exists (and deb822 main.sources removed so apt doesn't prefer it).
-+	rm -f "$deb822_file"
- 
+-
 -		i=$((i + 1))
 -	done
 -	set -e
@@ -417,16 +406,25 @@ index 9d7b2ed..8e1c4e0 100644
 -		random_weight=$(( (RANDOM % total_mirror_weight + 1) - 1 ))
 -		echo "Picking mirror: (${random_weight}) ${weighted_mirrors[${random_weight}]}"
 -		selected_mirror="${weighted_mirrors[${random_weight}]}"
--	fi
--
++	local suite="${SUITE:-stable}"
++	# If using a flat repo (suite './'), the repo should expose Packages/Packages.gz at the base.
++	echo "Using mirror: $MAIN (suite: $suite)"
++	if ! check_mirror "$MAIN"; then
++		echo "Error: mirror is not accessible: $MAIN" >&2
++		exit 1
+ 	fi
+ 
 -	if [ -z "$selected_mirror" ]; then
 -		# Should not happen unless there is some issue with
 -		# the script, or the mirror files
 -		echo "Error: None of the mirrors are accessible"
 -		exit 1
++	mkdir -p @TERMUX_PREFIX@/etc/apt/sources.list.d
 +	if [ "$suite" = './' ] || [ "$suite" = '.' ]; then
++		# Flat repo line format: deb <uri> ./
 +		echo "deb $MAIN ./" > "$sources_file"
 +	else
++		# Standard repo line format: deb <uri> stable main
 +		echo "deb $MAIN stable main" > "$sources_file"
  	fi
  
@@ -461,7 +459,9 @@ index 9d7b2ed..8e1c4e0 100644
 -			'legacy') echo "deb $ROOT root stable" > "@TERMUX_PREFIX@/etc/apt/sources.list.d/root.list";;
 -		esac
 -	)
-+	rm -f @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.list @TERMUX_PREFIX@/etc/apt/sources.list.d/root.list 	      @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.sources @TERMUX_PREFIX@/etc/apt/sources.list.d/root.sources
++	# Ensure x11/root are disabled even if their repo packages are installed.
++	rm -f @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.list @TERMUX_PREFIX@/etc/apt/sources.list.d/root.list \
++	      @TERMUX_PREFIX@/etc/apt/sources.list.d/x11.sources @TERMUX_PREFIX@/etc/apt/sources.list.d/root.sources
  }
  
  update_apt_cache() {
