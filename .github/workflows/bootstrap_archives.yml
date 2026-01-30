@@ -26,7 +26,7 @@ jobs:
       - name: Create bootstrap archive
         run: ./scripts/generate-bootstraps.sh --architectures ${{ matrix.arch }} --repository https://mart-01-oss.github.io/pages
       - name: Store artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bootstrap-archives-${{ matrix.arch }}-${{ github.sha }}
           path: "*.zip"
