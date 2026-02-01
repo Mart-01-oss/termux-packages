@@ -25,6 +25,7 @@ TERMUX_PKG_HOSTBUILD=true
 # See http://llvm.org/docs/CMake.html:
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="
 -DANDROID_PLATFORM_LEVEL=$TERMUX_PKG_API_LEVEL
+-DCMAKE_POLICY_VERSION_MINIMUM=3.5
 -DPYTHON_EXECUTABLE=$(command -v python3)
 -DLLVM_ENABLE_PIC=ON
 -DLLVM_INCLUDE_TESTS=OFF
@@ -69,6 +70,7 @@ termux_step_host_build() {
 	termux_setup_ninja
 
 	cmake -G Ninja "-DCMAKE_BUILD_TYPE=Release" \
+					"-DCMAKE_POLICY_VERSION_MINIMUM=3.5" \
 					"-DLLVM_ENABLE_PROJECTS=clang" \
 					$TERMUX_PKG_SRCDIR/llvm-project/llvm
 	ninja -j $TERMUX_PKG_MAKE_PROCESSES llvm-tblgen clang-tblgen
@@ -131,7 +133,7 @@ __llvmlite_build_lib() {
 	termux_setup_cmake
 	termux_setup_ninja
 
-	TERMUX_PKG_EXTRA_CONFIGURE_ARGS="-DLLVM_DIR=$_LLVMLITE_LLVM_INSTALL_DIR/lib/cmake/llvm"
+	TERMUX_PKG_EXTRA_CONFIGURE_ARGS="-DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DLLVM_DIR=$_LLVMLITE_LLVM_INSTALL_DIR/lib/cmake/llvm"
 
 	# Backup dirs and envs
 	local __old_srcdir="$TERMUX_PKG_SRCDIR"
