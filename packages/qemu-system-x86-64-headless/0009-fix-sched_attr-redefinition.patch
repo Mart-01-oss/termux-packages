@@ -1,0 +1,27 @@
+--- qemu-8.2.6.orig/linux-user/syscall.c	2026-02-01 11:19:28.448137253 +0800
++++ qemu-8.2.6.mod/linux-user/syscall.c	2026-02-01 11:19:28.488137253 +0800
+@@ -358,7 +358,15 @@
+ #define __NR_sys_sched_setaffinity __NR_sched_setaffinity
+ _syscall3(int, sys_sched_setaffinity, pid_t, pid, unsigned int, len,
+           unsigned long *, user_mask_ptr);
+-/* sched_attr is not defined in glibc */
++/*
++ * sched_attr is not defined in glibc.
++ *
++ * However, on Android (Bionic) the NDK headers already define struct sched_attr
++ * in <linux/sched/types.h>. Avoid redefining it.
++ */
++#ifdef __BIONIC__
++# include <linux/sched/types.h>
++#else
+ struct sched_attr {
+     uint32_t size;
+     uint32_t sched_policy;
+@@ -371,6 +379,7 @@
+     uint32_t sched_util_min;
+     uint32_t sched_util_max;
+ };
++#endif
+ #define __NR_sys_sched_getattr __NR_sched_getattr
+ _syscall4(int, sys_sched_getattr, pid_t, pid, struct sched_attr *, attr,
+           unsigned int, size, unsigned int, flags);

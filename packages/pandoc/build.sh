@@ -25,13 +25,27 @@ termux_step_post_configure() {
 	# We cannot use `Custom` build while cross-compiling:
 	sed -i -E 's|(build-type:\s*)Custom|\1Simple|' ./xml-conduit/xml-conduit.cabal
 
+	# splitmix uses getentropy(3) on unix, which is not available with bionic on
+	# older Android API levels (e.g. API 24). Vendor the package and patch it.
+	cabal get splitmix-0.1.3.2 # NOTE: Confirm version before updating.
+	mv splitmix{-0.1.3.2,}
+	patch -d splitmix -p1 < "$TERMUX_PKG_BUILDER_DIR/0001-splitmix-android-no-getentropy.diff"
+
 	if [[ "$TERMUX_ON_DEVICE_BUILD" == false ]]; then # We do not need iserv for on device builds.
 		termux_setup_ghc_iserv
 		cat <<-EOF >>cabal.project.local
 			packages: ./xml-conduit
+			          ./splitmix
 			          ./
 			package *
 			    ghc-options: -fexternal-interpreter -pgmi=$(command -v termux-ghc-iserv)
+		EOF
+	else
+		# Ensure cabal uses the patched local splitmix on-device too.
+		cat <<-EOF >>cabal.project.local
+			packages: ./xml-conduit
+			          ./splitmix
+			          ./
 		EOF
 	fi
 }

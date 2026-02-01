@@ -88,7 +88,18 @@ termux_step_make() {
 	mkdir -p "$TERMUX_PKG_SRCDIR"/usession-dir
 
 	local HOST_ROOTFS=""
-	local PROOT_TARGET="proot
+
+	# rpython executes freshly-built target binaries during translation.
+	# When running through qemu-user, the Android dynamic linker is expected at
+	# /system/bin/linker{,64}. Provide a minimal /system from aosp-libs.
+	local QEMU_LD_PREFIX_DIR="$TERMUX_PKG_CACHEDIR/qemu-ld-prefix"
+	mkdir -p "$QEMU_LD_PREFIX_DIR/system"
+	ln -sfn "$TERMUX_PREFIX/opt/aosp/bin" "$QEMU_LD_PREFIX_DIR/system/bin"
+	ln -sfn "$TERMUX_PREFIX/opt/aosp/lib" "$QEMU_LD_PREFIX_DIR/system/lib"
+	ln -sfn "$TERMUX_PREFIX/opt/aosp/lib64" "$QEMU_LD_PREFIX_DIR/system/lib64"
+
+	local PROOT_TARGET="env ANDROID_ROOT=/system ANDROID_DATA=/data QEMU_LD_PREFIX=$QEMU_LD_PREFIX_DIR proot
+-b $TERMUX_PREFIX/opt/aosp:/system
 -b $HOME
 -b $TERMUX_PKG_TMPDIR
 -b /proc -b /dev -b /sys

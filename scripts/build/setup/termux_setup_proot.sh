@@ -68,9 +68,20 @@ termux_setup_proot() {
 	# executables are invoked outside termux-proot-run (e.g. by cabal build tools).
 	export QEMU_LD_PREFIX="${QEMU_LD_PREFIX:-$_qemu_ld_prefix}"
 
-	# Provide an empty /data to satisfy ANDROID_DATA.
+	# Provide a minimal /data to satisfy ANDROID_DATA.
+	#
+	# NOTE: TERMUX_PREFIX (and most Termux runtime paths) live under
+	#   $TERMUX_APP__DATA_DIR (typically /data/data/<appId>/...).
+	#
+	# We bind-mount an empty /data for the Android runtime, but must re-bind the
+	# Termux app data directory back into /data so target binaries installed under
+	# $TERMUX_PREFIX (e.g. libtasn1's asn1Parser) remain accessible.
 	mkdir -p "$TERMUX_PROOT_BIN/proot-data"
+	mkdir -p "$TERMUX_PROOT_BIN/proot-data/data"
 	_proot_binds+=" -b $TERMUX_PROOT_BIN/proot-data:/data"
+	if [[ -n "${TERMUX_APP__DATA_DIR:-}" && -d "${TERMUX_APP__DATA_DIR}" ]]; then
+		_proot_binds+=" -b ${TERMUX_APP__DATA_DIR}:${TERMUX_APP__DATA_DIR}"
+	fi
 
 	# NOTE: We include current PATH too so that host binaries also become available under proot.
 	cat <<-EOF >"$TERMUX_PROOT_BIN/$TERMUX_PROOT_BIN_NAME"

@@ -1,6 +1,16 @@
 diff -uNr umoria-5.7.11/CMakeLists.txt umoria-5.7.11.mod/CMakeLists.txt
 --- umoria-5.7.11/CMakeLists.txt	2020-02-26 22:59:33.000000000 +0200
 +++ umoria-5.7.11.mod/CMakeLists.txt	2020-03-20 15:49:55.823149195 +0200
+@@ -22,5 +22,8 @@
+ # Compiler settings (this must come before calling project)
+-set(CMAKE_CXX_COMPILER g++)
++# Respect externally provided compiler (e.g. Android cross builds).
++if (NOT CMAKE_CXX_COMPILER)
++    set(CMAKE_CXX_COMPILER g++)
++endif ()
+ set(CMAKE_CXX_STANDARD 14)
+ set(CMAKE_CXX_STANDARD_REQUIRED on)
+ 
 @@ -161,11 +161,10 @@
  #
  # Set up the install paths and files

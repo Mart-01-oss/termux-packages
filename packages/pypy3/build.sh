@@ -134,17 +134,35 @@ __setup_termux_docker_rootfs() {
 		rm -f "$__pypy3_host_rootfs".tmp/tmp
 		mv "$__pypy3_host_rootfs".tmp "$__pypy3_host_rootfs"
 	fi
+
+	# Determine the actual Termux PREFIX inside the extracted rootfs.
+	# (termux-docker images use /data/data/com.termux/files/usr, but the build environment
+	# may have a different app id, so we must not reuse $TERMUX_PREFIX for the host rootfs.)
+	local _apt_path
+	_apt_path="$(find "$__pypy3_host_rootfs" -type f -path '*/bin/apt' -print -quit)"
+	if [ -z "$_apt_path" ]; then
+		termux_error_exit "Could not locate 'apt' inside $__pypy3_host_rootfs"
+	fi
+	__pypy3_host_prefix="${_apt_path#"$__pypy3_host_rootfs"}"
+	__pypy3_host_prefix="${__pypy3_host_prefix%/bin/apt}"
+	__pypy3_host_home="${__pypy3_host_prefix%/usr}/home"
+
+	# Ensure helper exists in the host rootfs prefix (so it's found via PATH).
+	mkdir -p "$__pypy3_host_rootfs/$__pypy3_host_prefix/bin" "$__pypy3_host_rootfs/$__pypy3_host_home"
+	cp "$TERMUX_PKG_CACHEDIR"/termux-docker-utils/update-static-dns \
+		"$__pypy3_host_rootfs/$__pypy3_host_prefix/bin/"
+	chmod +x "$__pypy3_host_rootfs/$__pypy3_host_prefix/bin/update-static-dns"
 }
 
 __setup_termux_envs() {
 	__pypy3_termux_envs="
 ANDROID_DATA=/data
 ANDROID_ROOT=/system
-HOME=$TERMUX_ANDROID_HOME
+HOME=$__pypy3_host_home
 LANG=en_US.UTF-8
-PATH=$TERMUX_PREFIX/bin
-PREFIX=$TERMUX_PREFIX
-TMPDIR=$TERMUX_PREFIX/tmp
+PATH=$__pypy3_host_prefix/bin
+PREFIX=$__pypy3_host_prefix
+TMPDIR=$__pypy3_host_prefix/tmp
 TERM=$TERM
 TZ=UTC"
 
@@ -158,7 +176,7 @@ $TERMUX_PKG_CACHEDIR/proot-bin/proot
 -b $HOME
 -b /tmp
 -b /data/:/target-termux-rootfs/data/
--b /system/:/target-termux-rootfs/system/
+-b $TERMUX_PREFIX/opt/aosp:/target-termux-rootfs/system/
 -w $TERMUX_PKG_TMPDIR
 -r $__pypy3_host_rootfs/
 "
@@ -170,7 +188,7 @@ PROOT_TMP_DIR=/tmp
 $__pypy3_termux_envs
 $TERMUX_PKG_CACHEDIR/proot-bin/proot
 -b /data/:/target-termux-rootfs/data/
--b /system/:/target-termux-rootfs/system/
+-b $TERMUX_PREFIX/opt/aosp:/target-termux-rootfs/system/
 -w $TERMUX_PKG_TMPDIR
 -R /
 /usr/bin/env -i
