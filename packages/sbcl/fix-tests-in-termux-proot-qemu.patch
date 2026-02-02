@@ -1,14 +1,6 @@
-Fix SBCL tests in Termux CI (proot/qemu).
-
-- run-program.test.sh: env-related test fails under qemu because Android ELF
-  interpreter (/system/bin/linker64) is unavailable. Skip on Android.
-- script.test.sh + stream.test.sh: bionic prints tzdata lookup warnings to
-  stderr in some CI/proot environments, which breaks tests that compare exact
-  output. Filter those warnings.
-
 --- a/tests/run-program.test.sh
 +++ b/tests/run-program.test.sh
-@@ -39,7 +39,7 @@ run_sbcl --eval "(defvar *exit-ok* $EXIT_LISP_WIN)" <<'EOF'
+@@ -58,7 +58,7 @@ run_sbcl --eval "(defvar *exit-ok* $EXIT_LISP_WIN)" <<'EOF'
    ;; Unix environment strings are ordinarily passed with SBCL convention
    ;; (instead of CMU CL alist-of-keywords convention).
 -  #+unix ; env works differently for msys2 apparently
@@ -21,44 +13,44 @@ Fix SBCL tests in Termux CI (proot/qemu).
 
 --- a/tests/script.test.sh
 +++ b/tests/script.test.sh
-@@ -67,10 +67,14 @@ cat > $tmpscript <<EOF
+@@ -67,7 +67,8 @@ cat > $tmpscript <<EOF
  EOF
  echo ONE | run_sbcl --script $tmpscript 1> $tmpout 2> $tmperr
  check_status_maybe_lose "--script exit status when stdin closed" $? 0 "(as given)"
 -if [ -s $tmperr ] || [ "ONE" != `cat $tmpout` ]
-+filtered_err=$(grep -v '^__bionic_open_tzdata:' "$tmperr" 2>/dev/null || true)
-+if [ -n "$filtered_err" ] || [ "ONE" != "$(cat $tmpout)" ]
++grep -v '^__bionic_open_tzdata:' "$tmperr" > "$tmperr.filtered" 2>/dev/null || true
++if [ -s "$tmperr.filtered" ] || [ "ONE" != "$(cat "$tmpout")" ]
  then
      echo "--script outputs wrong"
      exit $EXIT_LOSE
  fi
-@@ -77,10 +81,14 @@ cat > $tmpscript <<EOF
+@@ -77,7 +78,8 @@ cat > $tmpscript <<EOF
  EOF
  run_sbcl --script $tmpscript 2> $tmperr | head -n1 > $tmpout
  check_status_maybe_lose "--script exit status when stdout closed" $? 0 "(as given)"
 -if [ -s $tmperr ] || [ "foo" != `cat $tmpout` ]
-+filtered_err=$(grep -v '^__bionic_open_tzdata:' "$tmperr" 2>/dev/null || true)
-+if [ -n "$filtered_err" ] || [ "foo" != "$(cat $tmpout)" ]
++grep -v '^__bionic_open_tzdata:' "$tmperr" > "$tmperr.filtered" 2>/dev/null || true
++if [ -s "$tmperr.filtered" ] || [ "foo" != "$(cat "$tmpout")" ]
  then
      echo "--script unexpected error output"
      exit $EXIT_LOSE
  fi
- echo '(write-line "Ok!")' | run_sbcl --script 1>$tmpout 2>$tmperr
+@@ -88,7 +90,8 @@ echo '(write-line "Ok!")' | run_sbcl --script 1>$tmpout 2>$tmperr
  check_status_maybe_lose "--script exit status from stdin" $? 0 "(ok)"
 -if [ -s $tmperr ] || [ "Ok!" != `cat $tmpout` ]
-+filtered_err=$(grep -v '^__bionic_open_tzdata:' "$tmperr" 2>/dev/null || true)
-+if [ -n "$filtered_err" ] || [ "Ok!" != "$(cat $tmpout)" ]
++grep -v '^__bionic_open_tzdata:' "$tmperr" > "$tmperr.filtered" 2>/dev/null || true
++if [ -s "$tmperr.filtered" ] || [ "Ok!" != "$(cat "$tmpout")" ]
  then
      echo "--script unexpected error output"
      exit $EXIT_LOSE
  fi
-@@ -111,10 +119,14 @@ run_sbcl --eval "(compile-file \"$tmpscript\" :output-file \"$tmpfasl\")"  </dev/null >/dev/null
+@@ -111,7 +114,8 @@ run_sbcl --eval "(compile-file \"$tmpscript\" :output-file \"$tmpfasl\")"  </dev/null >/dev/null
  chmod +x $tmpfasl
  SBCL_HOME=`dirname $SBCL_CORE` ./$tmpfasl >$tmpout 2>$tmperr
  check_status_maybe_lose "--script exit status from fasl" $? 0 "(ok)"
 -if [ -s $tmperr ] || [ "Hello, Fasl" != "`cat $tmpout`" ]
-+filtered_err=$(grep -v '^__bionic_open_tzdata:' "$tmperr" 2>/dev/null || true)
-+if [ -n "$filtered_err" ] || [ "Hello, Fasl" != "$(cat $tmpout)" ]
++grep -v '^__bionic_open_tzdata:' "$tmperr" > "$tmperr.filtered" 2>/dev/null || true
++if [ -s "$tmperr.filtered" ] || [ "Hello, Fasl" != "$(cat "$tmpout")" ]
  then
      echo "--script from fasl unexpected output"
      exit $EXIT_LOSE
