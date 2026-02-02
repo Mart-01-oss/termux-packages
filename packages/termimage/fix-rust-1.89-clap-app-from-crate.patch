@@ -1,35 +1,26 @@
-Fix build with Rust 1.89+ (deny(dangerous_implicit_autorefs)).
-
-termimage v1.2.1 uses clap 2's app_from_crate!/crate_authors! macros.
-On newer Rust toolchains these macros can trigger `dangerous_implicit_autorefs`
-through clap internals.
-
-Avoid those macros by constructing the clap::App explicitly.
-
---- a/src/options.rs
-+++ b/src/options.rs
-@@ -9,7 +9,7 @@
+--- a/src/options.rs	2023-07-16 00:07:22.000000000 +0800
++++ b/src/options.rs	2026-02-02 19:02:08.226803707 +0800
+@@ -11,7 +11,7 @@
+ //! ```
+ 
  
 -use clap::{Arg, AppSettings};
-+use clap::{Arg, App, AppSettings};
++use clap::{App, Arg, AppSettings};
  use std::path::PathBuf;
  use std::str::FromStr;
  use term_size;
- use std::fs;
-@@ -59,8 +59,13 @@
-             szarg = szarg.required(true);
+@@ -59,7 +59,13 @@
              false
          };
  
 -        let matches = app_from_crate!("\n")
 +        let matches = App::new(env!("CARGO_PKG_NAME"))
++
 +            .version(env!("CARGO_PKG_VERSION"))
++
 +            .author(env!("CARGO_PKG_AUTHORS"))
++
 +            .about(env!("CARGO_PKG_DESCRIPTION"))
-+            .setting(AppSettings::ColoredHelp)
              .setting(AppSettings::ColoredHelp)
              .arg(Arg::from_usage("<IMAGE> 'Image file to display'").validator(Options::image_file_validator))
              .arg(szarg)
-             .arg(Arg::from_usage("-f --force 'Don't preserve the image's aspect ratio'"))
-             .arg(Arg::from_usage("-a --ansi [ANSI] 'Force output ANSI escapes'").possible_values(&["truecolor", "simple-black", "simple-white"]))
-             .get_matches();

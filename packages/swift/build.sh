@@ -3,6 +3,7 @@ TERMUX_PKG_DESCRIPTION="Swift is a high-performance system programming language"
 TERMUX_PKG_LICENSE="Apache-2.0, NCSA"
 TERMUX_PKG_MAINTAINER="@finagolfin"
 TERMUX_PKG_VERSION=6.1.3
+TERMUX_PKG_REVISION=1
 SWIFT_RELEASE="RELEASE"
 TERMUX_PKG_SRCURL=https://github.com/swiftlang/swift/archive/swift-$TERMUX_PKG_VERSION-$SWIFT_RELEASE.tar.gz
 TERMUX_PKG_SHA256=2a4f0045f7439c3dbed39f67487729a10bc8a8042c4a1d24a63db455ee67cd5f
@@ -138,6 +139,12 @@ termux_step_make() {
 
 	if [ "$TERMUX_ON_DEVICE_BUILD" = "false" ]; then
 		termux_setup_swift
+		# Swift's bundled clang defaults to ld.gold in some environments.
+		# When cross-linking Android/aarch64 binaries this can fail with:
+		#   ld.gold: ... crtbegin_dynamic.o: unsupported ELF machine number 183
+		# Force lld for all link steps invoked by Swift's build-script (including
+		# swift-corelibs-libdispatch CMake try-compile checks).
+		export LDFLAGS="$LDFLAGS -fuse-ld=lld"
 		ln -sf $TERMUX_PKG_HOSTBUILD_DIR/llvm-linux-x86_64 $TERMUX_PKG_BUILDDIR/llvm-linux-x86_64
 		for header in execinfo.h glob.h iconv.h spawn.h sys/sem.h sys/shm.h; do
 			ln -sf $TERMUX_PREFIX/include/$header $TERMUX_STANDALONE_TOOLCHAIN/sysroot/usr/include/$header
