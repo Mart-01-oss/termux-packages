@@ -12,6 +12,15 @@ TERMUX_PKG_BREAKS="valgrind-dev"
 TERMUX_PKG_REPLACES="valgrind-dev"
 TERMUX_PKG_EXTRA_CONFIGURE_ARGS="--with-tmpdir=$TERMUX_PREFIX/tmp"
 
+# vgpreload_{drd,helgrind}-* are LD_PRELOAD helper libraries. They are linked with
+# -nostdlib/-nodefaultlibs and intentionally keep a number of libc/pthread symbols
+# unresolved until they are loaded into the target process.
+# Exclude them from the undefined-symbol check performed in termux_step_massage.
+TERMUX_PKG_UNDEF_SYMBOLS_FILES="
+./libexec/valgrind/vgpreload_drd-arm64-linux.so
+./libexec/valgrind/vgpreload_helgrind-arm64-linux.so
+"
+
 termux_step_pre_configure() {
 	CFLAGS=${CFLAGS/-fstack-protector-strong/}
 

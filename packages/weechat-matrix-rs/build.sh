@@ -54,12 +54,25 @@ termux_step_make() {
 
 	# olm-sys needs the path to Android NDK to be built
 	export ANDROID_NDK="$NDK"
+
 	# force the plugin to be built against the weechat SDK available in packages
 	export WEECHAT_PLUGIN_FILE="$TERMUX_PREFIX/include/weechat/weechat-plugin.h"
 	WEECHAT_PLUGIN_API_VERSION=$(grep 'define WEECHAT_PLUGIN_API_VERSION' \
 		"$WEECHAT_PLUGIN_FILE" | cut -d " " -f 3 | tr -d '"')
 	printf "WeeChat Plugin API version: %s \n" "$WEECHAT_PLUGIN_API_VERSION"
 	[[ -z "$WEECHAT_PLUGIN_API_VERSION" ]] && exit 1
+
+	# weechat-sys uses bindgen, which must be pointed at the Android NDK sysroot.
+	# Otherwise it may accidentally pick up host headers (e.g. /usr/include) and
+	# fail with glibc-only macros like __GLIBC_USE.
+	local _sysroot="$TERMUX_STANDALONE_TOOLCHAIN/sysroot"
+	local _clang_args=(
+		"--target=$CCTERMUX_HOST_PLATFORM"
+		"--sysroot=$_sysroot"
+		"-isystem$_sysroot/usr/include"
+		"-I$TERMUX_PREFIX/include"
+	)
+	export BINDGEN_EXTRA_CLANG_ARGS="${_clang_args[*]}"
 
 	cargo build --jobs $TERMUX_PKG_MAKE_PROCESSES --target $CARGO_TARGET_NAME --release
 }

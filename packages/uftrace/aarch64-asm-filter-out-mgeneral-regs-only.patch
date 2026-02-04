@@ -1,0 +1,16 @@
+--- a/arch/aarch64/Makefile
++++ b/arch/aarch64/Makefile
+@@ -21,8 +21,13 @@ $(odir)/uftrace-arch.a: $(ARCH_UFTRACE_OBJS)
+ 	$(QUIET_AR)$(AR) $(ARFLAGS) $@ $^
+ 
+ $(odir)/%.op: $(sdir)/%.S
+-	$(QUIET_ASM)$(CC) $(LIB_CFLAGS) -c -o $@ $<
++	# uftrace may append '-mgeneral-regs-only' to LIB_CFLAGS (via check-deps)
++	# when the compiler supports it. That option disables the FP/SIMD register
++	# file for AArch64 and makes the assembler reject instructions using d0/d1
++	# (e.g. "instruction requires: fp-armv8").
++	# The flag is only meaningful for compiled C code, so filter it out for .S.
++	$(QUIET_ASM)$(CC) $(filter-out -mgeneral-regs-only,$(LIB_CFLAGS)) -c -o $@ $<
+ 
+ $(odir)/%.op: $(sdir)/%.c
+ 	$(QUIET_CC_FPIC)$(CC) $(LIB_CFLAGS) -c -o $@ $<
