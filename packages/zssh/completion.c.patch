@@ -1,6 +1,6 @@
 --- a/completion.c
 +++ b/completion.c
-@@ -41,8 +41,14 @@
+@@ -41,7 +41,13 @@
  /* Tell the GNU Readline library how to complete.  We want to try to complete
   on command names if this is the first word in the line, or on filenames
   if not. */
@@ -17,15 +17,15 @@
     printf("Using readline library version: %s\n", rl_library_version);
  #endif
 @@ -53,7 +59,7 @@
- 	   /* inhibit default filename completion
- 	    so that if zssh_completion() fails nothing is completed */
- 	   rl_completion_entry_function = fake_generator;
- 	   /* Tell the completer that we want a crack first. */
--	   rl_attempted_completion_function = (CPPFunction *) zssh_completion;
-+	   rl_attempted_completion_function = zssh_completion;
- 	   
+     so that if zssh_completion() fails nothing is completed */
+    rl_completion_entry_function = fake_generator;
+    /* Tell the completer that we want a crack first. */
+-   rl_attempted_completion_function = (CPPFunction *) zssh_completion;
++   rl_attempted_completion_function = zssh_completion;
+    
  }
-@@ -62,11 +68,7 @@
+ 
+@@ -62,10 +68,7 @@
   the word to complete.  We can use the entire contents of rl_line_buffer
   in case we want to do some simple parsing.  Return the array of matches,
   or NULL if there aren't any. */
@@ -36,7 +36,8 @@
 +static char **zssh_completion(const char *text, int start, int end)
  {
     char		**matches;
-@@ -89,9 +91,7 @@
+    
+@@ -89,9 +92,7 @@
  /* Generator function for command completion.  STATE lets us know whether
   to start from scratch; without any state (i.e. STATE == 0), then we
   start at the top of the list. */
@@ -47,19 +48,14 @@
  {
     static int	list_index, len;
     char		*name;
-@@ -125,9 +125,7 @@
- 
- 	/* If no names matched, then return NULL. */
- 	return ((char *)NULL);
+@@ -154,9 +155,7 @@
  }
-@@ -153,10 +151,7 @@
- 	}
- 	#endif /* 0 */
+ #endif /* 0 */
  
 -char			*fake_generator(text, state)
 -const char		*text;
 -int			state;
 +static char *fake_generator(const char *text, int state)
  {
- 	return (0);
+    return (0);
  }

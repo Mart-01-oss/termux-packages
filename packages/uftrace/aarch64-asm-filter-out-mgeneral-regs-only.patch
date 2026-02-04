@@ -1,6 +1,6 @@
 --- a/arch/aarch64/Makefile
 +++ b/arch/aarch64/Makefile
-@@ -21,11 +21,19 @@ $(odir)/uftrace-arch.a: $(ARCH_UFTRACE_OBJS)
+@@ -22,10 +22,17 @@
  	$(QUIET_AR)$(AR) $(ARFLAGS) $@ $^
  
  $(odir)/%.op: $(sdir)/%.S
@@ -17,3 +17,6 @@
 +	# explicitly accesses FP/SIMD registers (s0/d0/...). Filter out
 +	# '-mgeneral-regs-only' here as well.
 +	$(QUIET_CC_FPIC)$(CC) $(filter-out -mgeneral-regs-only,$(LIB_CFLAGS)) -c -o $@ $<
+ 
+ $(odir)/%.o: $(sdir)/%.c
+ 	$(QUIET_CC)$(CC) $(UFTRACE_CFLAGS) -c -o $@ $<
